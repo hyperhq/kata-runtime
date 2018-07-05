@@ -140,6 +140,9 @@ type HypervisorConfig struct {
 	// DisableBlockDeviceUse disallows a block device from being used.
 	DisableBlockDeviceUse bool
 
+	// VirtioFS enables virtio-fs instead of virtio-9p
+	VirtioFS bool
+
 	// KernelParams are additional guest kernel parameters.
 	KernelParams []Param
 

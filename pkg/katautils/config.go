@@ -101,6 +101,7 @@ type hypervisor struct {
 	DefaultBridges          uint32 `toml:"default_bridges"`
 	Msize9p                 uint32 `toml:"msize_9p"`
 	DisableBlockDeviceUse   bool   `toml:"disable_block_device_use"`
+	VirtioFS                bool   `toml:"enable_virtio_fs"`
 	MemPrealloc             bool   `toml:"enable_mem_prealloc"`
 	HugePages               bool   `toml:"enable_hugepages"`
 	Swap                    bool   `toml:"enable_swap"`
@@ -517,6 +518,7 @@ func newQemuHypervisorConfig(h hypervisor) (vc.HypervisorConfig, error) {
 		EntropySource:           h.GetEntropySource(),
 		DefaultBridges:          h.defaultBridges(),
 		DisableBlockDeviceUse:   h.DisableBlockDeviceUse,
+		VirtioFS:                h.VirtioFS,
 		MemPrealloc:             h.MemPrealloc,
 		HugePages:               h.HugePages,
 		Mlock:                   !h.Swap,

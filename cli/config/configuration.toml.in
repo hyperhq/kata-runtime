@@ -90,6 +90,9 @@ default_memory = @DEFMEMSZ@
 # 9pfs is used instead to pass the rootfs.
 disable_block_device_use = @DEFDISABLEBLOCK@
 
+# Use virtio-fs instead of 9p for shared filesystems.
+enable_virtio_fs = @DEFVIRTIOFS@
+
 # Block storage driver to be used for the hypervisor in case the container
 # rootfs is backed by a block device. This is either virtio-scsi or 
 # virtio-blk.

@@ -234,6 +234,9 @@ type HypervisorConfig struct {
 	// DisableBlockDeviceUse disallows a block device from being used.
 	DisableBlockDeviceUse bool
 
+	// VirtioFS enables virtio-fs instead of virtio-9p
+	VirtioFS bool
+
 	// EnableIOThreads enables IO to be processed in a separate thread.
 	// Supported currently for virtio-scsi driver.
 	EnableIOThreads bool
