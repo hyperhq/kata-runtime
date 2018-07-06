@@ -7,9 +7,11 @@ package virtcontainers
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -547,6 +549,23 @@ func (q *qemu) startSandbox() error {
 			}
 		}
 	}()
+
+	if q.config.VirtioFS {
+		sockPath, err := utils.BuildSocketPath(runStoragePath, q.id, "vhost-fs.sock")
+		if err != nil {
+			return err
+		}
+
+		// The daemon will terminate when the vhost-user socket
+		// connection with QEMU closes.  Therefore we do not keep track
+		// of this child process.
+		sourcePath := filepath.Join(kataHostSharedDir, q.id)
+
+		cmd := exec.Command(q.config.VirtioFSDaemon, "-o", "virtio_socket=" + sockPath, "-o", "source=" + sourcePath, "/")
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+	}
 
 	var strErr string
 	strErr, err = govmmQemu.LaunchQemu(q.qemuConfig, newQMPLogger())
@@ -1163,7 +1182,33 @@ func (q *qemu) addDevice(devInfo interface{}, devType deviceType) error {
 
 	switch v := devInfo.(type) {
 	case Volume:
-		q.qemuConfig.Devices = q.arch.append9PVolume(q.qemuConfig.Devices, v)
+		if q.config.VirtioFS {
+			q.Logger().Info("Adding vhost-user-fs-pci volume")
+
+			randBytes, err := utils.GenerateRandomBytes(8)
+			if err != nil {
+				return err
+			}
+			id := hex.EncodeToString(randBytes)
+
+			// TODO make this unique so multiple volumes can be added!
+			sockPath, err := utils.BuildSocketPath(runStoragePath, q.id, "vhost-fs.sock")
+			if err != nil {
+				return err
+			}
+
+			vhostDev := config.VhostUserDeviceAttrs{
+				Tag: v.MountTag,
+				Type: config.VhostUserFS,
+			}
+			vhostDev.SocketPath = sockPath
+			vhostDev.DevID = id
+
+			q.qemuConfig.Devices = q.arch.appendVhostUserDevice(q.qemuConfig.Devices, vhostDev)
+		} else {
+			q.Logger().Info("Adding virtio-9p volume")
+			q.qemuConfig.Devices = q.arch.append9PVolume(q.qemuConfig.Devices, v)
+		}
 	case Socket:
 		q.qemuConfig.Devices = q.arch.appendSocket(q.qemuConfig.Devices, v)
 	case kataVSOCK:
