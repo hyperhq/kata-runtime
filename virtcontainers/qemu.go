@@ -561,7 +561,7 @@ func (q *qemu) startSandbox() error {
 		// of this child process.
 		sourcePath := filepath.Join(kataHostSharedDir, q.id)
 
-		cmd := exec.Command(q.config.VirtioFSDaemon, "-o", "virtio_socket=" + sockPath, "-o", "source=" + sourcePath, "/")
+		cmd := exec.Command(q.config.VirtioFSDaemon, "-o", "virtio_socket="+sockPath, "-o", "source="+sourcePath, "/")
 		if err := cmd.Start(); err != nil {
 			return err
 		}
@@ -1198,13 +1198,13 @@ func (q *qemu) addDevice(devInfo interface{}, devType deviceType) error {
 			}
 
 			vhostDev := config.VhostUserDeviceAttrs{
-				Tag: v.MountTag,
+				Tag:  v.MountTag,
 				Type: config.VhostUserFS,
 			}
 			vhostDev.SocketPath = sockPath
 			vhostDev.DevID = id
 
-			q.qemuConfig.Devices = q.arch.appendVhostUserDevice(q.qemuConfig.Devices, vhostDev)
+			q.qemuConfig.Devices, err = q.arch.appendVhostUserDevice(q.qemuConfig.Devices, vhostDev)
 		} else {
 			q.Logger().Info("Adding virtio-9p volume")
 			q.qemuConfig.Devices = q.arch.append9PVolume(q.qemuConfig.Devices, v)

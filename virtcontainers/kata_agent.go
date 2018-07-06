@@ -54,19 +54,22 @@ var (
 	mountGuest9pTag       = "kataShared"
 	kataGuestSandboxDir   = "/run/kata-containers/sandbox/"
 	type9pFs              = "9p"
+	typeVirtioFS          = "virtio_fs"
 	vsockSocketScheme     = "vsock"
 	// port numbers below 1024 are called privileged ports. Only a process with
 	// CAP_NET_BIND_SERVICE capability may bind to these port numbers.
-	vSockPort            = 1024
-	kata9pDevType        = "9p"
-	kataMmioBlkDevType   = "mmioblk"
-	kataBlkDevType       = "blk"
-	kataSCSIDevType      = "scsi"
-	sharedDir9pOptions   = []string{"trans=virtio,version=9p2000.L,cache=mmap", "nodev"}
-	shmDir               = "shm"
-	kataEphemeralDevType = "ephemeral"
-	ephemeralPath        = filepath.Join(kataGuestSandboxDir, kataEphemeralDevType)
-	grpcMaxDataSize      = int64(1024 * 1024)
+	vSockPort                = 1024
+	kata9pDevType            = "9p"
+	kataMmioBlkDevType       = "mmioblk"
+	kataBlkDevType           = "blk"
+	kataSCSIDevType          = "scsi"
+	kataVirtioFSDevType      = "virtio-fs"
+	sharedDir9pOptions       = []string{"trans=virtio,version=9p2000.L,cache=mmap", "nodev"}
+	sharedDirVirtioFSOptions = []string{"rootmode=040000,user_id=0,group_id=0,dax,tag=" + mountGuest9pTag, "nodev"}
+	shmDir                   = "shm"
+	kataEphemeralDevType     = "ephemeral"
+	ephemeralPath            = filepath.Join(kataGuestSandboxDir, kataEphemeralDevType)
+	grpcMaxDataSize          = int64(1024 * 1024)
 )
 
 // KataAgentConfig is a structure storing information needed
@@ -626,15 +629,25 @@ func (k *kataAgent) startSandbox(sandbox *Sandbox) error {
 	storages := []*grpc.Storage{}
 	caps := sandbox.hypervisor.capabilities()
 
-	// append 9p shared volume to storages only if filesystem sharing is supported
-	if caps.isFsSharingSupported() {
+	// We mount the shared directory in a predefined location
+	// in the guest.
+	// This is where at least some of the host config files
+	// (resolv.conf, etc...) and potentially all container
+	// rootfs will reside.
+	if sandbox.config.HypervisorConfig.VirtioFS {
+		sharedVolume := &grpc.Storage{
+			Driver:     kataVirtioFSDevType,
+			Source:     "none",
+			MountPoint: kataGuestSharedDir,
+			Fstype:     typeVirtioFS,
+			Options:    sharedDirVirtioFSOptions,
+		}
+
+		storages = append(storages, sharedVolume)
+	} else if caps.isFsSharingSupported() {
+		// append 9p shared volume to storages only if filesystem sharing is supported
 		sharedDir9pOptions = append(sharedDir9pOptions, fmt.Sprintf("msize=%d", sandbox.config.HypervisorConfig.Msize9p))
 
-		// We mount the shared directory in a predefined location
-		// in the guest.
-		// This is where at least some of the host config files
-		// (resolv.conf, etc...) and potentially all container
-		// rootfs will reside.
 		sharedVolume := &grpc.Storage{
 			Driver:     kata9pDevType,
 			Source:     mountGuest9pTag,
