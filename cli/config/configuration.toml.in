@@ -93,6 +93,9 @@ disable_block_device_use = @DEFDISABLEBLOCK@
 # Use virtio-fs instead of 9p for shared filesystems.
 enable_virtio_fs = @DEFVIRTIOFS@
 
+# Path to vhost-user-fs daemon.
+virtio_fs_daemon = "@DEFVIRTIOFSDAEMON@"
+
 # Block storage driver to be used for the hypervisor in case the container
 # rootfs is backed by a block device. This is either virtio-scsi or 
 # virtio-blk.

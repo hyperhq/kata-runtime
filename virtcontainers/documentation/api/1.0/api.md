@@ -143,6 +143,9 @@ type HypervisorConfig struct {
 	// VirtioFS enables virtio-fs instead of virtio-9p
 	VirtioFS bool
 
+	// VirtioFSDaemon is the virtio-fs vhost-user daemon path
+	VirtioFSDaemon string
+
 	// KernelParams are additional guest kernel parameters.
 	KernelParams []Param
 
