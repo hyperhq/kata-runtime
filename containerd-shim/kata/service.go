@@ -360,17 +360,43 @@ func (s *service) State(ctx context.Context, r *taskAPI.StateRequest) (*taskAPI.
 
 // Pause the container
 func (s *service) Pause(ctx context.Context, r *taskAPI.PauseRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Pause")
+	c, ok := s.containers[r.ID]
+	if !ok {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "container does not exist %s", r.ID)
+	}
+
+	containerType, err := oci.GetContainerType(s.containers[r.ID].container.GetAnnotations())
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, pause(s.sandbox, c.container, containerType)
 }
 
 // Resume the container
 func (s *service) Resume(ctx context.Context, r *taskAPI.ResumeRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Resume")
+
+	c, ok := s.containers[r.ID]
+	if !ok {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "container does not exist %s", r.ID)
+	}
+
+	containerType, err := oci.GetContainerType(s.containers[r.ID].container.GetAnnotations())
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, resume(s.sandbox, c.container, containerType)
 }
 
 // Kill a process with the provided signal
 func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "Kill")
+	c, ok := s.containers[r.ID]
+	if !ok {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "container does not exist %s", r.ID)
+	}
+	
+	return nil, kill(s.sandbox, c.container, r.ExecID, r.Signal, r.All)
 }
 
 // Pids returns all pids inside the container
