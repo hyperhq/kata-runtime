@@ -391,15 +391,9 @@ func (s *service) Pause(ctx context.Context, r *taskAPI.PauseRequest) (*ptypes.E
 		return nil, err
 	}
 
-	containerType, err := oci.GetContainerType(s.containers[r.ID].container.GetAnnotations())
-	if err != nil {
-		return nil, err
-	}
-
 	c.status = task.StatusPausing
 
-	err = pause(s.sandbox, c.container, containerType)
-
+	err = vc.PauseContainer(r.ID, c.id)
 	if err == nil {
 		c.status = task.StatusPaused
 	} else {
@@ -419,12 +413,7 @@ func (s *service) Resume(ctx context.Context, r *taskAPI.ResumeRequest) (*ptypes
 		return nil, err
 	}
 
-	containerType, err := oci.GetContainerType(s.containers[r.ID].container.GetAnnotations())
-	if err != nil {
-		return nil, err
-	}
-
-	err = resume(s.sandbox, c.container, containerType)
+	err = vc.ResumeContainer(r.ID, c.id)
 	if err == nil {
 		c.status = task.StatusRunning
 	} else {
@@ -444,7 +433,7 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 		return nil, err
 	}
 
-	err = kill(s.sandbox, c.container, r.ExecID, r.Signal, r.All)
+	err = s.sandbox.SignalProcess(c.id, r.ExecID, syscall.Signal(r.Signal), r.All)
 	if err == nil {
 		c.status = task.StatusStopped
 	} else {
