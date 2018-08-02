@@ -354,8 +354,24 @@ func (s *service) Exec(ctx context.Context, r *taskAPI.ExecProcessRequest) (*pty
 
 // ResizePty of a process
 func (s *service) ResizePty(ctx context.Context, r *taskAPI.ResizePtyRequest) (*ptypes.Empty, error) {
-	//	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service ResizePty")
-	return empty, nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	processID := r.ExecID
+	if r.ExecID == "" {
+		processID = c.id
+	} 
+	err = s.sandbox.WinsizeProcess(c.id, processID, r.Height, r.Width)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, err
 }
 
 // State returns runtime state information for a process
