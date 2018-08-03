@@ -460,7 +460,7 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 
 	err = s.sandbox.SignalProcess(c.id, r.ExecID, syscall.Signal(r.Signal), r.All)
 	if err == nil {
-		c.status = task.StatusStopped
+		c.status, err = s.getContainerStatus(c.id)
 	} else {
 		c.status = task.StatusUnknown
 	}
@@ -600,4 +600,25 @@ func (s *service) getContainer(id string) (*Container, error) {
 	}
 
 	return c, nil
+}
+
+func (s *service) getContainerStatus(containerID string) (task.Status, error) {
+	cStatus, err := s.sandbox.StatusContainer(containerID)
+	if err != nil {
+		return 0, err
+	}
+
+	var status task.Status
+	switch cStatus.State.State {
+	case vc.StateReady:
+		status = task.StatusCreated
+	case vc.StateRunning:
+		status = task.StatusRunning
+	case vc.StatePaused:
+		status = task.StatusPaused
+	case vc.StateStopped:
+		status = task.StatusStopped
+	}
+
+	return status, nil
 }
