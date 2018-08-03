@@ -1,5 +1,3 @@
-// Copyright (c) 2014,2015,2016 Docker, Inc.
-// Copyright (c) 2017 Intel Corporation
 // Copyright (c) 2018 HyperHQ Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -8,40 +6,98 @@
 package kata
 
 import (
+	"context"
 	"fmt"
+	"github.com/containerd/containerd/api/types/task"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 )
 
-func start(s *service, containerID, execID string) (vc.VCContainer, error) {
+func startContainer(ctx context.Context, s *service, c *Container) error {
+	//start a container
 	// Checks the MUST and MUST NOT from OCI runtime specification
-	status, sandboxID, err := getExistingContainerInfo(containerID)
+	status, sandboxID, err := getExistingContainerInfo(c.id)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	containerType, err := oci.GetContainerType(status.Annotations)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if containerType.IsSandbox() {
 		_, err := vc.StartSandbox(s.sandbox.ID())
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		c := s.sandbox.GetContainer(containerID)
-
-		if c == nil {
-			return nil, fmt.Errorf("Canot get container %s from sandbox %s", containerID, containerID)
+	} else {
+		_, err = vci.StartContainer(sandboxID, c.id)
+		if err != nil {
+			return err
 		}
-		return c, nil
 	}
 
-	c, err := vci.StartContainer(sandboxID, containerID)
+	c.status = task.StatusRunning
+
+	stdin, stdout, stderr, err := s.sandbox.IOStream(c.id, c.id)
+	if err != nil {
+		return err
+	}
+	tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
+
+	go ioCopy(c.exitch, tty, stdin, stdout, stderr)
+
+	//if the container is run detachted, containerd will not wait it, thus
+	//its needs to wait it here.
+	if !c.terminal {
+		go wait(s, c, "")
+	}
+	return nil
+}
+
+func startExec(ctx context.Context, s *service, containerID, execID string) (*Exec, error) {
+	//start an exec
+	c, err := s.getContainer(containerID)
 	if err != nil {
 		return nil, err
 	}
 
-	return c, nil
+	execs, err := c.getExec(execID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, proc, err := s.sandbox.EnterContainer(containerID, *execs.cmds)
+	if err != nil {
+		err := fmt.Errorf("cannot enter container %s, with err %s", containerID, err)
+		return nil, err
+	}
+	execs.id = proc.Token
+	pid := s.pid()
+	execs.pid = pid
+	s.processes[pid] = vc.Process{Token: proc.Token, Pid: proc.Pid, StartTime: proc.StartTime}
+
+	execs.status = task.StatusRunning
+	if execs.tty.height != 0 && execs.tty.width != 0 {
+		err = s.sandbox.WinsizeProcess(c.id, execs.id, execs.tty.height, execs.tty.width)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	stdin, stdout, stderr, err := s.sandbox.IOStream(c.id, execs.id)
+	if err != nil {
+		return nil, err
+	}
+	tty, err := newTtyIO(ctx, execs.tty.stdin, execs.tty.stdout, execs.tty.stderr, execs.tty.terminal)
+
+	go ioCopy(execs.exitch, tty, stdin, stdout, stderr)
+
+	//if the exec is run detachted, containerd will not wait it, thus
+	//its needs to wait it here.
+	if !execs.tty.terminal {
+		go wait(s, c, execID)
+	}
+
+	return execs, nil
 }
