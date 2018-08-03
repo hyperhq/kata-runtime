@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/cgroups"
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
@@ -22,7 +21,6 @@ import (
 	cdruntime "github.com/containerd/containerd/runtime"
 	cdshim "github.com/containerd/containerd/runtime/v2/shim"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
-	"github.com/containerd/typeurl"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
@@ -519,26 +517,11 @@ func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.
 		return nil, err
 	}
 	
-	stats, err := s.sandbox.StatsContainer(c.id)
+	data, err := marshalMetrics(s, c.id)
 	if err != nil {
 		return nil, err
 	}
 
-	cgStats := stats.CgroupStats
-	metrics := &cgroups.Metrics{
-		Memory:	&cgroups.MemoryStat{
-			Usage:	&cgroups.MemoryEntry{
-				Limit:		cgStats.MemoryStats.Usage.Limit,
-				Usage:		cgStats.MemoryStats.Usage.Usage,
-			},		
-		},
-	}
-
-	data, err := typeurl.MarshalAny(metrics)
-	if err != nil {
-		return nil, err
-	}
-	
 	return &taskAPI.StatsResponse{
 		Stats: data,
 	}, nil
