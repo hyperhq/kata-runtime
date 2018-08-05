@@ -45,13 +45,10 @@ func startContainer(ctx context.Context, s *service, c *Container) error {
 	}
 	tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
 
-	go ioCopy(c.exitch, tty, stdin, stdout, stderr)
+	go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
 
-	//if the container is run detachted, containerd will not wait it, thus
-	//its needs to wait it here.
-	if !c.terminal {
-		go wait(s, c, "")
-	}
+	go wait(s, c, "")
+
 	return nil
 }
 
@@ -91,13 +88,9 @@ func startExec(ctx context.Context, s *service, containerID, execID string) (*Ex
 	}
 	tty, err := newTtyIO(ctx, execs.tty.stdin, execs.tty.stdout, execs.tty.stderr, execs.tty.terminal)
 
-	go ioCopy(execs.exitch, tty, stdin, stdout, stderr)
+	go ioCopy(execs.exitIOch, tty, stdin, stdout, stderr)
 
-	//if the exec is run detachted, containerd will not wait it, thus
-	//its needs to wait it here.
-	if !execs.tty.terminal {
-		go wait(s, c, execID)
-	}
+	go wait(s, c, execID)
 
 	return execs, nil
 }

@@ -25,7 +25,9 @@ type Exec struct {
 	tty       *Tty
 	status    task.Status
 
-	exitch   chan struct{}
+	exitIOch chan struct{}
+	exitch   chan uint32
+
 	exitTime time.Time
 }
 
@@ -97,7 +99,8 @@ func newExec(c *Container, stdin, stdout, stderr string, terminal bool, jspec *g
 		cmds:      cmds,
 		tty:       tty,
 		exitCode:  int32(255),
-		exitch:    make(chan struct{}),
+		exitIOch:  make(chan struct{}),
+		exitch:    make(chan uint32, 1),
 		status:    task.StatusCreated,
 	}
 

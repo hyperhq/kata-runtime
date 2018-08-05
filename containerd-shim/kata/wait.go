@@ -16,16 +16,16 @@ func wait(s *service, c *Container, execID string) (int32, error) {
 
 	processID := c.id
 	pid := c.pid
-	
+
 	if execID == "" {
 		//wait until the io closed, then wait the container
-		<-c.exitch
+		<-c.exitIOch
 	} else {
 		execs, err = c.getExec(execID)
 		if err != nil {
 			return int32(255), err
 		}
-		<-execs.exitch
+		<-execs.exitIOch
 		//This wait could be triggered before exec start which
 		//will get the exec's id, thus this assignment must after
 		//the exec exit, to make sure it get the exec's id.
@@ -36,6 +36,12 @@ func wait(s *service, c *Container, execID string) (int32, error) {
 	ret, err := s.sandbox.WaitProcess(c.id, processID)
 	if err != nil {
 		return ret, err
+	}
+
+	if execID == "" {
+		c.exitch <- uint32(ret)
+	} else {
+		execs.exitch <- uint32(ret)
 	}
 
 	timeStamp := time.Now()

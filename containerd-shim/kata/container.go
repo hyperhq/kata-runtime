@@ -22,7 +22,9 @@ type Container struct {
 	stdout   string
 	stderr   string
 	terminal bool
-	exitch   chan struct{}
+
+	exitIOch chan struct{}
+	exitch   chan uint32
 
 	bundle    string
 	execs     map[string]*Exec
@@ -46,7 +48,8 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, containe
 		terminal: r.Terminal,
 		execs:    make(map[string]*Exec),
 		status:   task.StatusCreated,
-		exitch:   make(chan struct{}),
+		exitIOch: make(chan struct{}),
+		exitch:   make(chan uint32, 1),
 		time:     time.Now(),
 	}
 	return c

@@ -608,21 +608,30 @@ func (s *service) Update(ctx context.Context, r *taskAPI.UpdateTaskRequest) (*pt
 
 // Wait for a process to exit
 func (s *service) Wait(ctx context.Context, r *taskAPI.WaitRequest) (*taskAPI.WaitResponse, error) {
+	var ret uint32
+
 	s.mu.Lock()
 	c, err := s.getContainer(r.ID)
 	s.mu.Unlock()
 
 	if err != nil {
-		return &taskAPI.WaitResponse{
-			ExitStatus: uint32(0),
-		}, err
+		return nil, err
 	}
 
-	ret, err := wait(s, c, r.ExecID)
+	//wait for container
+	if r.ExecID == "" {
+		ret = <-c.exitch
+	} else { //wait for exec
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		ret = <-execs.exitch
+	}
 
 	return &taskAPI.WaitResponse{
-		ExitStatus: uint32(ret),
-	}, err
+		ExitStatus: ret,
+	}, nil
 }
 
 func (s *service) processExits() {
