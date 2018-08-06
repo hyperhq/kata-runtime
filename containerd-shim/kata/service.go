@@ -654,7 +654,7 @@ func (s *service) getContainer(id string) (*Container, error) {
 func (s *service) getContainerStatus(containerID string) (task.Status, error) {
 	cStatus, err := s.sandbox.StatusContainer(containerID)
 	if err != nil {
-		return 0, err
+		return task.StatusUnknown, err
 	}
 
 	var status task.Status
