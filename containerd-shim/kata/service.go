@@ -24,6 +24,8 @@ import (
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
+	"github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/typeurl"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -71,7 +73,7 @@ func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shi
 		context:    ctx,
 		config:     runtimeConfig,
 		containers: make(map[string]*Container),
-		processes:  make(map[uint32]vc.Process),
+		processes:  make(map[uint32]string),
 		events:     make(chan interface{}, 128),
 		ec:         make(chan Exit, bufferSize),
 		ep:         ep,
@@ -101,7 +103,7 @@ type service struct {
 	context    context.Context
 	sandbox    vc.VCSandbox
 	containers map[string]*Container
-	processes  map[uint32]vc.Process
+	processes  map[uint32]string
 	config     *oci.RuntimeConfig
 	events     chan interface{}
 
@@ -311,7 +313,7 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 	container.status = task.StatusCreated
 
 	s.containers[r.ID] = container
-	s.processes[pid] = c.Process()
+	s.processes[pid] = r.ID
 
 	return &taskAPI.CreateTaskResponse{
 		Pid: pid,
@@ -556,7 +558,29 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 
 // Pids returns all pids inside the container
 func (s *service) Pids(ctx context.Context, r *taskAPI.PidsRequest) (*taskAPI.PidsResponse, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Pids")
+
+	var id string
+	var pid uint32
+	var processes []*task.ProcessInfo
+	for pid, id = range s.processes {
+		pInfo := task.ProcessInfo{
+			Pid: pid,
+		}
+
+		d := &options.ProcessDetails{
+			ExecID: id,
+		}
+		a, err := typeurl.MarshalAny(d)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to marshal process %d info", pid)
+		}
+		pInfo.Info = a
+
+		processes = append(processes, &pInfo)
+	}
+	return &taskAPI.PidsResponse{
+		Processes: processes,
+	}, nil
 }
 
 // CloseIO of a process

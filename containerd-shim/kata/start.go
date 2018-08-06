@@ -72,7 +72,7 @@ func startExec(ctx context.Context, s *service, containerID, execID string) (*Ex
 	execs.id = proc.Token
 	pid := s.pid()
 	execs.pid = pid
-	s.processes[pid] = vc.Process{Token: proc.Token, Pid: proc.Pid, StartTime: proc.StartTime}
+	s.processes[pid] = execID
 
 	execs.status = task.StatusRunning
 	if execs.tty.height != 0 && execs.tty.width != 0 {
