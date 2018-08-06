@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/cgroups"
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
@@ -22,7 +21,6 @@ import (
 	cdruntime "github.com/containerd/containerd/runtime"
 	cdshim "github.com/containerd/containerd/runtime/v2/shim"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
-	"github.com/containerd/typeurl"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
@@ -517,7 +515,7 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 
 	err = s.sandbox.SignalProcess(c.id, processID, syscall.Signal(r.Signal), r.All)
 	if err == nil {
-		c.status = task.StatusStopped
+		c.status, err = s.getContainerStatus(c.id)
 	} else {
 		c.status = task.StatusUnknown
 	}
@@ -575,23 +573,8 @@ func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.
 	if err != nil {
 		return nil, err
 	}
-
-	stats, err := s.sandbox.StatsContainer(c.id)
-	if err != nil {
-		return nil, err
-	}
-
-	cgStats := stats.CgroupStats
-	metrics := &cgroups.Metrics{
-		Memory: &cgroups.MemoryStat{
-			Usage: &cgroups.MemoryEntry{
-				Limit: cgStats.MemoryStats.Usage.Limit,
-				Usage: cgStats.MemoryStats.Usage.Usage,
-			},
-		},
-	}
-
-	data, err := typeurl.MarshalAny(metrics)
+	
+	data, err := marshalMetrics(s, c.id)
 	if err != nil {
 		return nil, err
 	}
@@ -666,4 +649,25 @@ func (s *service) getContainer(id string) (*Container, error) {
 	}
 
 	return c, nil
+}
+
+func (s *service) getContainerStatus(containerID string) (task.Status, error) {
+	cStatus, err := s.sandbox.StatusContainer(containerID)
+	if err != nil {
+		return 0, err
+	}
+
+	var status task.Status
+	switch cStatus.State.State {
+	case vc.StateReady:
+		status = task.StatusCreated
+	case vc.StateRunning:
+		status = task.StatusRunning
+	case vc.StatePaused:
+		status = task.StatusPaused
+	case vc.StateStopped:
+		status = task.StatusStopped
+	}
+
+	return status, nil
 }
