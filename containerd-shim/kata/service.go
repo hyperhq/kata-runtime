@@ -313,7 +313,7 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 	container.status = task.StatusCreated
 
 	s.containers[r.ID] = container
-	s.processes[pid] = r.ID
+	s.processes[pid] = ""
 
 	return &taskAPI.CreateTaskResponse{
 		Pid: pid,
@@ -567,15 +567,16 @@ func (s *service) Pids(ctx context.Context, r *taskAPI.PidsRequest) (*taskAPI.Pi
 			Pid: pid,
 		}
 
-		d := &options.ProcessDetails{
-			ExecID: id,
+		if id != "" {
+			d := &options.ProcessDetails{
+				ExecID: id,
+			}
+			a, err := typeurl.MarshalAny(d)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to marshal process %d info", pid)
+			}
+			pInfo.Info = a
 		}
-		a, err := typeurl.MarshalAny(d)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to marshal process %d info", pid)
-		}
-		pInfo.Info = a
-
 		processes = append(processes, &pInfo)
 	}
 	return &taskAPI.PidsResponse{
