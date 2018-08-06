@@ -44,6 +44,7 @@ func startContainer(ctx context.Context, s *service, c *Container) error {
 		return err
 	}
 	tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
+	c.ttyio = tty
 
 	go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
 
@@ -87,6 +88,7 @@ func startExec(ctx context.Context, s *service, containerID, execID string) (*Ex
 		return nil, err
 	}
 	tty, err := newTtyIO(ctx, execs.tty.stdin, execs.tty.stdout, execs.tty.stderr, execs.tty.terminal)
+	execs.ttyio = tty
 
 	go ioCopy(execs.exitIOch, tty, stdin, stdout, stderr)
 

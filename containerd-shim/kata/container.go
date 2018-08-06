@@ -21,6 +21,7 @@ type Container struct {
 	stdin    string
 	stdout   string
 	stderr   string
+	ttyio    *TtyIO
 	terminal bool
 
 	exitIOch chan struct{}

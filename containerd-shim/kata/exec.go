@@ -23,6 +23,7 @@ type Exec struct {
 	cmds      *vc.Cmd
 	exitCode  int32
 	tty       *Tty
+	ttyio     *TtyIO
 	status    task.Status
 
 	exitIOch chan struct{}
