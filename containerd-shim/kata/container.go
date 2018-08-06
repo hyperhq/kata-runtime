@@ -7,10 +7,11 @@ package kata
 
 import (
 	"github.com/containerd/containerd/api/types/task"
+	"github.com/containerd/containerd/errdefs"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
 	vc "github.com/kata-containers/runtime/virtcontainers"
-	"time"
 	"sync"
+	"time"
 )
 
 type Container struct {
@@ -21,7 +22,9 @@ type Container struct {
 	stdout   string
 	stderr   string
 	terminal bool
-	exitch   chan struct{}
+
+	exitIOch chan struct{}
+	exitch   chan uint32
 
 	bundle    string
 	execs     map[string]*Exec
@@ -30,7 +33,7 @@ type Container struct {
 	exit      uint32
 	time      time.Time
 
-	mu         sync.Mutex
+	mu sync.Mutex
 }
 
 func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, container vc.VCContainer) *Container {
@@ -43,9 +46,21 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, containe
 		stdout:   r.Stdout,
 		stderr:   r.Stderr,
 		terminal: r.Terminal,
+		execs:    make(map[string]*Exec),
 		status:   task.StatusCreated,
-		exitch:   make(chan struct{}),
+		exitIOch: make(chan struct{}),
+		exitch:   make(chan uint32, 1),
 		time:     time.Now(),
 	}
 	return c
+}
+
+func (c *Container) getExec(id string) (*Exec, error) {
+	exec := c.execs[id]
+
+	if exec == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "exec does not exist %s", id)
+	}
+
+	return exec, nil
 }

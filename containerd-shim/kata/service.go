@@ -297,36 +297,26 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 		return nil, err
 	}
 
-	//start a sandbox or container, instead of an exec
+	//start a container
 	if r.ExecID == "" {
-
-		_, err := start(s, r.ID, r.ExecID)
+		err = startContainer(ctx, s, c)
 		if err != nil {
 			return nil, errdefs.ToGRPC(err)
-		}
-
-		c.status = task.StatusRunning
-
-		stdin, stdout, stderr, err := s.sandbox.IOStream(c.id, c.id)
-		if err != nil {
-			return nil, err
-		}
-		tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
-
-		go ioCopy(c.exitch, tty, stdin, stdout, stderr)
-
-		//if the container is run detachted, containerd will not wait it, thus
-		//its needs to wait it here.
-		if !c.terminal {
-			go wait(s, c, r.ExecID)
 		}
 
 		return &taskAPI.StartResponse{
 			Pid: c.pid,
 		}, nil
+	} else { //start an exec
+		execs, err := startExec(ctx, s, r.ID, r.ExecID)
+		if err != nil {
+			return nil, errdefs.ToGRPC(err)
+		}
 
+		return &taskAPI.StartResponse{
+			Pid: execs.pid,
+		}, nil
 	}
-	return nil, errdefs.ErrNotImplemented
 }
 
 // Delete the initial process and container
@@ -350,35 +340,75 @@ func (s *service) Delete(ctx context.Context, r *taskAPI.DeleteRequest) (*taskAP
 			ExitedAt:   c.time,
 			Pid:        c.pid,
 		}, nil
+	} else {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+
+		delete(s.processes, execs.pid)
+		delete(c.execs, r.ExecID)
+
+		return &taskAPI.DeleteResponse{
+			ExitStatus: uint32(execs.exitCode),
+			ExitedAt:   execs.exitTime,
+			Pid:        execs.pid,
+		}, nil
 	}
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Delete id=%s, execid=%s", r.ID, r.ExecID)
 }
 
 // Exec an additional process inside the container
 func (s *service) Exec(ctx context.Context, r *taskAPI.ExecProcessRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Exec")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if execs := c.execs[r.ExecID]; execs != nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrAlreadyExists, "id %s", r.ExecID)
+	}
+
+	execs, err := newExec(c, r.Stdin, r.Stdout, r.Stderr, r.Terminal, r.Spec)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	c.execs[r.ExecID] = execs
+
+	return empty, nil
 }
 
 // ResizePty of a process
 func (s *service) ResizePty(ctx context.Context, r *taskAPI.ResizePtyRequest) (*ptypes.Empty, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	c, err := s.getContainer(r.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	processID := r.ExecID
-	if r.ExecID == "" {
-		processID = c.id
-	} 
+	processID := c.id
+	if r.ExecID != "" {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		execs.tty.height = r.Height
+		execs.tty.width = r.Width
+
+		return empty, nil
+
+	}
 	err = s.sandbox.WinsizeProcess(c.id, processID, r.Height, r.Width)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, err
+	return empty, err
 }
 
 // State returns runtime state information for a process
@@ -391,17 +421,35 @@ func (s *service) State(ctx context.Context, r *taskAPI.StateRequest) (*taskAPI.
 		return nil, err
 	}
 
-	return &taskAPI.StateResponse{
-		ID:         c.id,
-		Bundle:     c.bundle,
-		Pid:        c.pid,
-		Status:     c.status,
-		Stdin:      c.stdin,
-		Stdout:     c.stdout,
-		Stderr:     c.stderr,
-		Terminal:   c.terminal,
-		ExitStatus: c.exit,
-	}, nil
+	if r.ExecID == "" {
+		return &taskAPI.StateResponse{
+			ID:         c.id,
+			Bundle:     c.bundle,
+			Pid:        c.pid,
+			Status:     c.status,
+			Stdin:      c.stdin,
+			Stdout:     c.stdout,
+			Stderr:     c.stderr,
+			Terminal:   c.terminal,
+			ExitStatus: c.exit,
+		}, nil
+	} else {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		return &taskAPI.StateResponse{
+			ID:         execs.id,
+			Bundle:     c.bundle,
+			Pid:        execs.pid,
+			Status:     execs.status,
+			Stdin:      execs.tty.stdin,
+			Stdout:     execs.tty.stdout,
+			Stderr:     execs.tty.stderr,
+			Terminal:   execs.tty.terminal,
+			ExitStatus: uint32(execs.exitCode),
+		}, nil
+	}
 }
 
 // Pause the container
@@ -456,7 +504,16 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 		return nil, err
 	}
 
-	err = s.sandbox.SignalProcess(c.id, r.ExecID, syscall.Signal(r.Signal), r.All)
+	processID := c.id
+	if r.ExecID != "" {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		processID = execs.id
+	}
+
+	err = s.sandbox.SignalProcess(c.id, processID, syscall.Signal(r.Signal), r.All)
 	if err == nil {
 		c.status, err = s.getContainerStatus(c.id)
 	} else {
@@ -488,7 +545,7 @@ func (s *service) Connect(ctx context.Context, r *taskAPI.ConnectRequest) (*task
 
 func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*ptypes.Empty, error) {
 	s.mu.Lock()
-	if len(s.containers) == 0{
+	if len(s.containers) == 0 {
 		defer os.Exit(0)
 
 		_, err := vci.StopSandbox(s.sandbox.ID())
@@ -534,21 +591,30 @@ func (s *service) Update(ctx context.Context, r *taskAPI.UpdateTaskRequest) (*pt
 
 // Wait for a process to exit
 func (s *service) Wait(ctx context.Context, r *taskAPI.WaitRequest) (*taskAPI.WaitResponse, error) {
+	var ret uint32
+
 	s.mu.Lock()
 	c, err := s.getContainer(r.ID)
 	s.mu.Unlock()
 
 	if err != nil {
-		return &taskAPI.WaitResponse{
-			ExitStatus: uint32(0),
-		}, err
+		return nil, err
 	}
 
-	ret, err := wait(s, c, r.ExecID)
+	//wait for container
+	if r.ExecID == "" {
+		ret = <-c.exitch
+	} else { //wait for exec
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		ret = <-execs.exitch
+	}
 
 	return &taskAPI.WaitResponse{
-		ExitStatus: uint32(ret),
-	}, err
+		ExitStatus: ret,
+	}, nil
 }
 
 func (s *service) processExits() {
