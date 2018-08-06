@@ -105,7 +105,6 @@ type service struct {
 	config     *oci.RuntimeConfig
 	events     chan interface{}
 
-	//TODO: replace runcC.Exit with a general Exit in shim module
 	ec chan Exit
 
 	ep *epoller
@@ -240,6 +239,38 @@ func getTopic(ctx context.Context, e interface{}) string {
 }
 
 func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) {
+	if s.id == "" {
+		return nil, errdefs.ToGRPCf(errdefs.ErrInvalidArgument, "the container id is empty, please specify the container id")
+	}
+
+	path, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := vci.StatusSandbox(s.id)
+	if err != nil {
+		return nil, err
+	}
+
+	if oci.StateToOCIState(status.State) != oci.StateStopped {
+		if _, err := vci.StopSandbox(s.id); err != nil {
+			logrus.WithError(err).Warn("failed to stop kata container")
+		}
+	}
+
+	if _, err := vci.DeleteSandbox(s.id); err != nil {
+		logrus.WithError(err).Warn("failed to remove kata container")
+	}
+
+	if err := delContainerIDMapping(s.id); err != nil {
+		logrus.WithError(err).Warn("failed to remove kata container id mapping files")
+	}
+
+	if err := mount.UnmountAll(filepath.Join(path, "rootfs"), 0); err != nil {
+		logrus.WithError(err).Warn("failed to cleanup rootfs mount")
+	}
+
 	return &taskAPI.DeleteResponse{
 		ExitedAt:   time.Now(),
 		ExitStatus: 128 + uint32(unix.SIGKILL),
@@ -573,7 +604,7 @@ func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	data, err := marshalMetrics(s, c.id)
 	if err != nil {
 		return nil, err
