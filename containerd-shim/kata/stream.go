@@ -42,7 +42,7 @@ func newTtyIO(ctx context.Context, stdin, stdout, stderr string, console bool) (
 	var errw io.Writer
 	var err error
 
-	if console && stdin != "" {
+	if stdin != "" {
 		in, err = fifo.OpenFifo(ctx, stdin, syscall.O_RDONLY, 0)
 		if err != nil {
 			return nil, err
