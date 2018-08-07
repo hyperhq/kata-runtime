@@ -58,12 +58,6 @@ var vci vc.VC = &vc.VCImpl{}
 
 // New returns a new shim service that can be used via GRPC
 func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shim, error) {
-	ep, err := newOOMEpoller(publisher)
-	if err != nil {
-		return nil, err
-	}
-	go ep.run(ctx)
-
 	runtimeConfig, err := loadConfiguration()
 
 	if err != nil {
@@ -78,7 +72,6 @@ func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shi
 		processes:  make(map[uint32]string),
 		events:     make(chan interface{}, 128),
 		ec:         make(chan Exit, bufferSize),
-		ep:         ep,
 	}
 
 	go s.processExits()
@@ -110,9 +103,6 @@ type service struct {
 	events     chan interface{}
 
 	ec chan Exit
-
-	ep *epoller
-
 	id string
 }
 
