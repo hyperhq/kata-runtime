@@ -7,9 +7,7 @@
 package kata
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,35 +15,8 @@ import (
 )
 
 const (
-	unknown     = "<<unknown>>"
 	k8sEmptyDir = "kubernetes.io~empty-dir"
 )
-
-// variables to allow tests to modify the values
-var (
-	procVersion = "/proc/version"
-	osRelease   = "/etc/os-release"
-
-	// Clear Linux has a different path (for stateless support)
-	osReleaseClr = "/usr/lib/os-release"
-)
-
-func fileExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
-}
-
-func getFileContents(file string) (string, error) {
-	bytes, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytes), nil
-}
 
 // IsEphemeralStorage returns true if the given path
 // to the storage belongs to kubernetes ephemeral storage
@@ -90,26 +61,6 @@ func resolvePath(path string) (string, error) {
 	}
 
 	return resolved, nil
-}
-
-// writeFile write data into specified file
-func writeFile(filePath string, data string, fileMode os.FileMode) error {
-	// Normally dir should not be empty, one case is that cgroup subsystem
-	// is not mounted, we will get empty dir, and we want it fail here.
-	if filePath == "" {
-		return fmt.Errorf("no such file for %s", filePath)
-	}
-
-	if err := ioutil.WriteFile(filePath, []byte(data), fileMode); err != nil {
-		return fmt.Errorf("failed to write %v to %v: %v", data, filePath, err)
-	}
-
-	return nil
-}
-
-// isEmptyString return if string is empty
-func isEmptyString(b []byte) bool {
-	return len(bytes.Trim(b, "\n")) == 0
 }
 
 func cReap(s *service, pid, status int, id, execid string, exitat time.Time) {
