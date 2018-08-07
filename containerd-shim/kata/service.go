@@ -619,7 +619,20 @@ func (s *service) Checkpoint(ctx context.Context, r *taskAPI.CheckpointTaskReque
 
 // Connect returns shim information such as the shim's pid
 func (s *service) Connect(ctx context.Context, r *taskAPI.ConnectRequest) (*taskAPI.ConnectResponse, error) {
-	return nil, errdefs.ToGRPCf(errdefs.ErrNotImplemented, "service Connect")
+	var pid uint32
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+	pid = c.pid
+
+	return &taskAPI.ConnectResponse{
+		ShimPid: uint32(os.Getpid()),
+		TaskPid: pid,
+	}, nil
 }
 
 func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*ptypes.Empty, error) {
