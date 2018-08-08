@@ -11,6 +11,7 @@ import (
 )
 
 func wait(s *service, c *Container, execID string) (int32, error) {
+	var execs *Exec
 	var err error
 
 	processID := c.id
@@ -19,6 +20,17 @@ func wait(s *service, c *Container, execID string) (int32, error) {
 	if execID == "" {
 		//wait until the io closed, then wait the container
 		<-c.exitIOch
+	} else {
+		execs, err = c.getExec(execID)
+		if err != nil {
+			return int32(255), err
+		}
+		<-execs.exitIOch
+		//This wait could be triggered before exec start which
+		//will get the exec's id, thus this assignment must after
+		//the exec exit, to make sure it get the exec's id.
+		processID = execs.id
+		pid = execs.pid
 	}
 
 	ret, err := s.sandbox.WaitProcess(c.id, processID)
@@ -28,6 +40,8 @@ func wait(s *service, c *Container, execID string) (int32, error) {
 
 	if execID == "" {
 		c.exitch <- uint32(ret)
+	} else {
+		execs.exitch <- uint32(ret)
 	}
 
 	timeStamp := time.Now()
@@ -36,6 +50,10 @@ func wait(s *service, c *Container, execID string) (int32, error) {
 		c.status = task.StatusStopped
 		c.exit = uint32(ret)
 		c.time = timeStamp
+	} else {
+		execs.status = task.StatusStopped
+		execs.exitCode = ret
+		execs.exitTime = timeStamp
 	}
 	c.mu.Unlock()
 

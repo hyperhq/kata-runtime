@@ -7,6 +7,7 @@ package kata
 
 import (
 	"github.com/containerd/containerd/api/types/task"
+	"github.com/containerd/containerd/errdefs"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"sync"
@@ -53,4 +54,14 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, containe
 		time:     time.Now(),
 	}
 	return c
+}
+
+func (c *Container) getExec(id string) (*Exec, error) {
+	exec := c.execs[id]
+
+	if exec == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "exec does not exist %s", id)
+	}
+
+	return exec, nil
 }
