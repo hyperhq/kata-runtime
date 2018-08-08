@@ -23,12 +23,14 @@ import (
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
+	"github.com/containerd/containerd/api/types/task"
+	"github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/typeurl"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"path/filepath"
-	"github.com/containerd/containerd/api/types/task"
 	"golang.org/x/sys/unix"
+	"path/filepath"
 )
 
 const bufferSize = 32
@@ -462,7 +464,29 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 
 // Pids returns all pids inside the container
 func (s *service) Pids(ctx context.Context, r *taskAPI.PidsRequest) (*taskAPI.PidsResponse, error) {
-	return nil, errdefs.ErrNotImplemented
+	var id string
+	var pid uint32
+	var processes []*task.ProcessInfo
+	for pid, id = range s.processes {
+		pInfo := task.ProcessInfo{
+			Pid: pid,
+		}
+
+		if id != "" {
+			d := &options.ProcessDetails{
+				ExecID: id,
+			}
+			a, err := typeurl.MarshalAny(d)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to marshal process %d info", pid)
+			}
+			pInfo.Info = a
+		}
+		processes = append(processes, &pInfo)
+	}
+	return &taskAPI.PidsResponse{
+		Processes: processes,
+	}, nil
 }
 
 // CloseIO of a process
