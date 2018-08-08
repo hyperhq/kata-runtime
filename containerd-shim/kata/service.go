@@ -6,6 +6,7 @@ package kata
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"sync"
@@ -31,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"path/filepath"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const bufferSize = 32
@@ -568,7 +570,20 @@ func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.
 
 // Update a running container
 func (s *service) Update(ctx context.Context, r *taskAPI.UpdateTaskRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var resources specs.LinuxResources
+	if err := json.Unmarshal(r.Resources.Value, &resources); err != nil {
+		return empty, err
+	}
+
+	err := s.sandbox.UpdateContainer(r.ID, resources)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	return empty, nil
 }
 
 // Wait for a process to exit
