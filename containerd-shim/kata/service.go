@@ -541,7 +541,25 @@ func (s *service) Connect(ctx context.Context, r *taskAPI.ConnectRequest) (*task
 }
 
 func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	if len(s.containers) == 0 {
+		defer os.Exit(0)
+
+		_, err := vci.StopSandbox(s.sandbox.ID())
+		if err != nil {
+			s.mu.Unlock()
+			return empty, err
+		}
+
+		_, err = vci.DeleteSandbox(s.sandbox.ID())
+		if err != nil {
+			s.mu.Unlock()
+			return empty, err
+		}
+	}
+	defer s.mu.Unlock()
+
+	return empty, nil
 }
 
 func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.StatsResponse, error) {
