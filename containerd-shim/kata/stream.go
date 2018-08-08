@@ -5,11 +5,11 @@
 package kata
 
 import (
-	"io"
-	"github.com/containerd/fifo"
-	"syscall"
-	"sync"
 	"context"
+	"github.com/containerd/fifo"
+	"io"
+	"sync"
+	"syscall"
 )
 
 type TtyIO struct {
