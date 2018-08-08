@@ -134,6 +134,10 @@ DEFMSIZE9P := 8192
 SED = sed
 
 CLI_DIR = cli
+SHIMV2 = containerd-shim-kata-v2
+SHIMV2_OUTPUT = $(CURDIR)/$(SHIMV2)
+SHIMV2_DIR = $(CLI_DIR)/$(SHIMV2)
+
 SOURCES := $(shell find . 2>&1 | grep -E '.*\.(c|h|go)$$')
 VERSION := ${shell cat ./VERSION}
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
@@ -223,7 +227,9 @@ define SHOW_ARCH
   $(shell printf "\\t%s%s\\\n" "$(1)" $(if $(filter $(ARCH),$(1))," (default)",""))
 endef
 
-all: runtime
+all: runtime shim
+
+shim: $(SHIMV2_OUTPUT)
 
 runtime: $(TARGET_OUTPUT) $(CONFIG)
 .DEFAULT: default
@@ -327,6 +333,9 @@ $(GENERATED_CONFIG): Makefile VERSION
 $(TARGET_OUTPUT): $(EXTRA_DEPS) $(SOURCES) $(GENERATED_GO_FILES) $(GENERATED_FILES) Makefile | show-summary
 	$(QUIET_BUILD)(cd $(CLI_DIR) && go build -i -o $@ .)
 
+$(SHIMV2_OUTPUT): $(TARGET_OUTPUT)
+	$(QUIET_BUILD)(cd $(SHIMV2_DIR)/ && go build -i -o $@ .)
+
 .PHONY: \
 	check \
 	check-go-static \
@@ -401,10 +410,13 @@ check-go-static:
 coverage:
 	$(QUIET_TEST).ci/go-test.sh html-coverage
 
-install: default runtime install-scripts install-completions install-config install-bin
+install: default runtime install-scripts install-completions install-config install-bin install-shim
 
 install-bin: $(BINLIST)
 	$(foreach f,$(BINLIST),$(call INSTALL_EXEC,$f,$(BINDIR)))
+
+install-shim: $(SHIMV2)
+	$(call INSTALL_EXEC,$<,$(BINDIR))
 
 install-config: $(CONFIG)
 	$(QUIET_INST)install --mode 0644 -D $(CONFIG) $(DESTDIR)/$(CONFIG_PATH)
@@ -416,7 +428,7 @@ install-completions:
 	$(QUIET_INST)install --mode 0644 -D  $(BASH_COMPLETIONS) $(DESTDIR)/$(BASH_COMPLETIONSDIR)/$(notdir $(BASH_COMPLETIONS));
 
 clean:
-	$(QUIET_CLEAN)rm -f $(TARGET) $(CONFIG) $(GENERATED_GO_FILES) $(GENERATED_FILES) $(COLLECT_SCRIPT)
+	$(QUIET_CLEAN)rm -f $(TARGET) $(SHIMV2) $(CONFIG) $(GENERATED_GO_FILES) $(GENERATED_FILES) $(COLLECT_SCRIPT)
 
 show-usage: show-header
 	@printf "• Overview:\n"
