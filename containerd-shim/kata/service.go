@@ -290,7 +290,14 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 			Pid: c.pid,
 		}, nil
 	} else { //start an exec
-		return nil, errdefs.ErrNotImplemented
+		execs, err := startExec(ctx, s, r.ID, r.ExecID)
+		if err != nil {
+			return nil, errdefs.ToGRPC(err)
+		}
+
+		return &taskAPI.StartResponse{
+			Pid: execs.pid,
+		}, nil
 	}
 }
 
@@ -301,7 +308,26 @@ func (s *service) Delete(ctx context.Context, r *taskAPI.DeleteRequest) (*taskAP
 
 // Exec an additional process inside the container
 func (s *service) Exec(ctx context.Context, r *taskAPI.ExecProcessRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if execs := c.execs[r.ExecID]; execs != nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrAlreadyExists, "id %s", r.ExecID)
+	}
+
+	execs, err := newExec(c, r.Stdin, r.Stdout, r.Stderr, r.Terminal, r.Spec)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	c.execs[r.ExecID] = execs
+
+	return empty, nil
 }
 
 // ResizePty of a process
