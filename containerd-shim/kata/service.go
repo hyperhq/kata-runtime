@@ -271,7 +271,27 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 
 // Start a process
 func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.StartResponse, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	//start a container
+	if r.ExecID == "" {
+		err = startContainer(ctx, s, c)
+		if err != nil {
+			return nil, errdefs.ToGRPC(err)
+		}
+
+		return &taskAPI.StartResponse{
+			Pid: c.pid,
+		}, nil
+	} else { //start an exec
+		return nil, errdefs.ErrNotImplemented
+	}
 }
 
 // Delete the initial process and container
@@ -369,4 +389,14 @@ func (s *service) checkProcesses(e Exit) {
 		ExitedAt:    e.timestamp,
 	}
 	return
+}
+
+func (s *service) getContainer(id string) (*Container, error) {
+	c := s.containers[id]
+
+	if c == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "container does not exist %s", id)
+	}
+
+	return c, nil
 }
