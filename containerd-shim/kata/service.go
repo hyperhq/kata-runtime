@@ -15,6 +15,7 @@ import (
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	cdruntime "github.com/containerd/containerd/runtime"
 	cdshim "github.com/containerd/containerd/runtime/v2/shim"
@@ -23,7 +24,10 @@ import (
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
 	ptypes "github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"path/filepath"
+	"github.com/containerd/containerd/api/types/task"
 )
 
 const bufferSize = 32
@@ -226,7 +230,43 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 
 // Create a new sandbox or container with the underlying OCI runtime
 func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *taskAPI.CreateTaskResponse, err error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rootfs := filepath.Join(r.Bundle, "rootfs")
+	defer func() {
+		if err != nil {
+			if err2 := mount.UnmountAll(rootfs, 0); err2 != nil {
+				logrus.WithError(err2).Warn("failed to cleanup rootfs mount")
+			}
+		}
+	}()
+	for _, rm := range r.Rootfs {
+		m := &mount.Mount{
+			Type:    rm.Type,
+			Source:  rm.Source,
+			Options: rm.Options,
+		}
+		if err := m.Mount(rootfs); err != nil {
+			return nil, errors.Wrapf(err, "failed to mount rootfs component %v", m)
+		}
+	}
+
+	c, err := create(s, r.ID, r.Bundle, !r.Terminal, s.config)
+	if err != nil {
+		return nil, err
+	}
+
+	pid := s.pid()
+	container := newContainer(s, r, pid, c)
+	container.status = task.StatusCreated
+
+	s.containers[r.ID] = container
+	s.processes[pid] = ""
+
+	return &taskAPI.CreateTaskResponse{
+		Pid: pid,
+	}, nil
 }
 
 // Start a process
