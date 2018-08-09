@@ -305,6 +305,11 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	ns, err := namespaces.NamespaceRequired(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "create namespace")
+	}
+
 	rootfs := filepath.Join(r.Bundle, "rootfs")
 	defer func() {
 		if err != nil {
@@ -324,7 +329,7 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 		}
 	}
 
-	c, err := create(s, r.ID, r.Bundle, !r.Terminal, s.config)
+	c, err := create(s, r.ID, r.Bundle, ns, !r.Terminal, s.config)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func create(s *service, containerID, bundlePath string, detach bool,
+func create(s *service, containerID, bundlePath, netns string, detach bool,
 	runtimeConfig *oci.RuntimeConfig) (vc.VCContainer, error) {
 	var err error
 
@@ -39,11 +39,12 @@ func create(s *service, containerID, bundlePath string, detach bool,
 
 	//In the sandbox, the containers will only
 	//use the mnt space to separate the rootfs,
-	//and to share the other namesapces, thus
-	//remove those namespace types from ocispec.
+	//and to share the other namesapces with host
+	//in the sandbox, thus remove those namespaces
+	//from ocispec except networkNamespace, since
+	//it has been ignored by kata-agent in sandbox.
 
 	for _, ns := range []specs.LinuxNamespaceType{
-		specs.NetworkNamespace,
 		specs.UserNamespace,
 		specs.UTSNamespace,
 		specs.IPCNamespace,
@@ -51,6 +52,22 @@ func create(s *service, containerID, bundlePath string, detach bool,
 		specs.CgroupNamespace,
 	} {
 		removeNameSpace(&ociSpec, ns)
+	}
+
+	//set the network namespace path
+	//this set will be applied to sandbox's
+	//network config and hasn't nothing to
+	//do with containers in the sandbox since
+	//networkNamesapce hasn't been ignored by
+	//kata-agent in sandbox.
+	for _, n := range ociSpec.Linux.Namespaces {
+		if n.Type != specs.NetworkNamespace {
+			continue
+		}
+
+		if n.Path == "" {
+			n.Path = netns
+		}
 	}
 
 	if runtimeConfig.FactoryConfig.Template {
