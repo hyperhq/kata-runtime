@@ -550,7 +550,35 @@ func (s *service) Resume(ctx context.Context, r *taskAPI.ResumeRequest) (*ptypes
 
 // Kill a process with the provided signal
 func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.Lock()
+	defer s.Unlock()
+
+	signum := syscall.Signal(r.Signal)
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	processID := c.id
+	if r.ExecID != "" {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		processID = execs.id
+	}
+
+	err = s.sandbox.SignalProcess(c.id, processID, signum, r.All)
+	if err != nil {
+		return nil, err
+	}
+
+	if signum == syscall.SIGTERM {
+		err = s.sandbox.SignalProcess(c.id, processID, syscall.SIGKILL, r.All)
+	}
+
+	return empty, err
 }
 
 // Pids returns all pids inside the container
