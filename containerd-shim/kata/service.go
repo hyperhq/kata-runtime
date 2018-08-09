@@ -476,7 +476,24 @@ func (s *service) State(ctx context.Context, r *taskAPI.StateRequest) (*taskAPI.
 
 // Pause the container
 func (s *service) Pause(ctx context.Context, r *taskAPI.PauseRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	c.status = task.StatusPausing
+
+	err = vc.PauseContainer(r.ID, c.id)
+	if err == nil {
+		c.status = task.StatusPaused
+	} else {
+		c.status = task.StatusUnknown
+	}
+
+	return nil, err
 }
 
 // Resume the container
