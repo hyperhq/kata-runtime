@@ -110,7 +110,11 @@ func create(s *service, containerID, bundlePath, netns string, detach bool,
 		s.sandbox = c.Sandbox()
 
 	case vc.PodContainer:
-		c, err = createContainer(ociSpec, containerID, bundlePath, disableOutput)
+		if s.sandbox == nil {
+			return nil, fmt.Errorf("BUG: Cannot start the container, since the sandbox hasn't been created")
+		}
+
+		c, err = createContainer(s.sandbox, ociSpec, containerID, bundlePath, disableOutput)
 		if err != nil {
 			return nil, err
 		}
@@ -233,7 +237,7 @@ func setEphemeralStorageType(ociSpec oci.CompatOCISpec) oci.CompatOCISpec {
 	return ociSpec
 }
 
-func createContainer(ociSpec oci.CompatOCISpec, containerID, bundlePath string,
+func createContainer(sandbox vc.VCSandbox, ociSpec oci.CompatOCISpec, containerID, bundlePath string,
 	disableOutput bool) (vc.VCContainer, error) {
 
 	ociSpec = setEphemeralStorageType(ociSpec)
@@ -243,17 +247,12 @@ func createContainer(ociSpec oci.CompatOCISpec, containerID, bundlePath string,
 		return nil, err
 	}
 
-	sandboxID, err := ociSpec.SandboxID()
+	c, err := sandbox.CreateContainer(contConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	_, c, err := vci.CreateContainer(sandboxID, contConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := addContainerIDMapping(containerID, sandboxID); err != nil {
+	if err := addContainerIDMapping(containerID, sandbox.ID()); err != nil {
 		return nil, err
 	}
 
