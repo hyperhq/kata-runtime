@@ -152,6 +152,38 @@ func newCommand(ctx context.Context, containerdBinary, containerdAddress string)
 }
 
 func (s *service) StartShim(ctx context.Context, id, containerdBinary, containerdAddress string) (string, error) {
+	bundlePath, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Checks the MUST and MUST NOT from OCI runtime specification
+	if bundlePath, err = validCreateParams(id, bundlePath); err != nil {
+		return "", err
+	}
+
+	ociSpec, err := oci.ParseConfigJSON(bundlePath)
+	if err != nil {
+		return "", err
+	}
+
+	containerType, err := ociSpec.ContainerType()
+	if err != nil {
+		return "", err
+	}
+
+	if containerType == vc.PodContainer {
+		sandboxID, err := ociSpec.SandboxID()
+		if err != nil {
+			return "", err
+		}
+		address, err := cdshim.SocketAddress(ctx, sandboxID)
+		if err != nil {
+			return "", err
+		}
+		return address, nil
+	}
+
 	cmd, err := newCommand(ctx, containerdBinary, containerdAddress)
 	if err != nil {
 		return "", err
