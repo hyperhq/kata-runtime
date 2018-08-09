@@ -646,7 +646,22 @@ func (s *service) Shutdown(ctx context.Context, r *taskAPI.ShutdownRequest) (*pt
 }
 
 func (s *service) Stats(ctx context.Context, r *taskAPI.StatsRequest) (*taskAPI.StatsResponse, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := marshalMetrics(s, c.id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &taskAPI.StatsResponse{
+		Stats: data,
+	}, nil
 }
 
 // Update a running container
