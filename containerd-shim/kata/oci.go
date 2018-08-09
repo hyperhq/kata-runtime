@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 
 	vc "github.com/kata-containers/runtime/virtcontainers"
+	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const ctrsMappingDirMode = os.FileMode(0750)
@@ -168,4 +170,13 @@ func delContainerIDMapping(containerID string) error {
 	path := filepath.Join(ctrsMapTreePath, containerID)
 
 	return os.RemoveAll(path)
+}
+
+func removeNameSpace(s *oci.CompatOCISpec, nsType specs.LinuxNamespaceType){
+	for i, n := range s.Linux.Namespaces {
+		if n.Type == nsType {
+			s.Linux.Namespaces = append(s.Linux.Namespaces[:i], s.Linux.Namespaces[i+1:]...)
+			return
+		}
+	}
 }

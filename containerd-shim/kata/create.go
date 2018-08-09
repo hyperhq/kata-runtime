@@ -15,6 +15,7 @@ import (
 	vf "github.com/kata-containers/runtime/virtcontainers/factory"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 	"github.com/sirupsen/logrus"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func create(s *service, containerID, bundlePath string, detach bool,
@@ -34,6 +35,22 @@ func create(s *service, containerID, bundlePath string, detach bool,
 	containerType, err := ociSpec.ContainerType()
 	if err != nil {
 		return nil, err
+	}
+
+	//In the sandbox, the containers will only
+	//use the mnt space to separate the rootfs,
+	//and to share the other namesapces, thus
+	//remove those namespace types from ocispec.
+
+	for _, ns := range []specs.LinuxNamespaceType{
+		specs.NetworkNamespace,
+		specs.UserNamespace,
+		specs.UTSNamespace,
+		specs.IPCNamespace,
+		specs.PIDNamespace,
+		specs.CgroupNamespace,
+	} {
+		removeNameSpace(&ociSpec, ns)
 	}
 
 	if runtimeConfig.FactoryConfig.Template {
