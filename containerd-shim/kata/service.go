@@ -518,7 +518,31 @@ func (s *service) Resume(ctx context.Context, r *taskAPI.ResumeRequest) (*ptypes
 
 // Kill a process with the provided signal
 func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Empty, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	processID := c.id
+	if r.ExecID != "" {
+		execs, err := c.getExec(r.ExecID)
+		if err != nil {
+			return nil, err
+		}
+		processID = execs.id
+	}
+
+	err = s.sandbox.SignalProcess(c.id, processID, syscall.Signal(r.Signal), r.All)
+	if err == nil {
+		c.status, err = s.getContainerStatus(c.id)
+	} else {
+		c.status = task.StatusUnknown
+	}
+
+	return nil, err
 }
 
 // Pids returns all pids inside the container
@@ -703,4 +727,25 @@ func (s *service) getContainer(id string) (*Container, error) {
 	}
 
 	return c, nil
+}
+
+func (s *service) getContainerStatus(containerID string) (task.Status, error) {
+	cStatus, err := s.sandbox.StatusContainer(containerID)
+	if err != nil {
+		return task.StatusUnknown, err
+	}
+
+	var status task.Status
+	switch cStatus.State.State {
+	case vc.StateReady:
+		status = task.StatusCreated
+	case vc.StateRunning:
+		status = task.StatusRunning
+	case vc.StatePaused:
+		status = task.StatusPaused
+	case vc.StateStopped:
+		status = task.StatusStopped
+	}
+
+	return status, nil
 }
