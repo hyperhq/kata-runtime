@@ -16,15 +16,17 @@ import (
 	"time"
 )
 
-type Exec struct {
+type exec struct {
+	container *container
+	cmds      *vc.Cmd
+	tty       *tty
+	ttyio     *ttyIO
 	id        string
 	pid       uint32
-	container *Container
-	cmds      *vc.Cmd
-	exitCode  int32
-	tty       *Tty
-	ttyio     *TtyIO
-	status    task.Status
+
+	exitCode int32
+
+	status task.Status
 
 	exitIOch chan struct{}
 	exitch   chan uint32
@@ -32,7 +34,7 @@ type Exec struct {
 	exitTime time.Time
 }
 
-type Tty struct {
+type tty struct {
 	stdin    string
 	stdout   string
 	stderr   string
@@ -60,7 +62,7 @@ func getEnvs(envs []string) []vc.EnvVar {
 	return vcEnvs
 }
 
-func newExec(c *Container, stdin, stdout, stderr string, terminal bool, jspec *googleProtobuf.Any) (*Exec, error) {
+func newExec(c *container, stdin, stdout, stderr string, terminal bool, jspec *googleProtobuf.Any) (*exec, error) {
 	var height uint32
 	var width uint32
 
@@ -75,7 +77,7 @@ func newExec(c *Container, stdin, stdout, stderr string, terminal bool, jspec *g
 		width = uint32(spec.ConsoleSize.Width)
 	}
 
-	tty := &Tty{
+	tty := &tty{
 		stdin:    stdin,
 		stdout:   stdout,
 		stderr:   stderr,
@@ -95,7 +97,7 @@ func newExec(c *Container, stdin, stdout, stderr string, terminal bool, jspec *g
 		NoNewPrivileges: spec.NoNewPrivileges,
 	}
 
-	exec := &Exec{
+	exec := &exec{
 		container: c,
 		cmds:      cmds,
 		tty:       tty,

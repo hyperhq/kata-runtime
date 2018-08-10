@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func wait(s *service, c *Container, execID string) (int32, error) {
-	var execs *Exec
+func wait(s *service, c *container, execID string) (int32, error) {
+	var execs *exec
 	var err error
 
 	processID := c.id

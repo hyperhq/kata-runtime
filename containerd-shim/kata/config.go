@@ -19,7 +19,6 @@ import (
 )
 
 var defaultHypervisorPath = "/usr/bin/qemu-lite-system-x86_64"
-var defaultImagePath = "/usr/share/kata-containers/kata-containers.img"
 var defaultKernelPath = "/usr/share/kata-containers/vmlinuz.container"
 var defaultInitrdPath = "/usr/share/kata-containers/kata-containers-initrd.img"
 var defaultFirmwarePath = ""
@@ -27,7 +26,6 @@ var defaultMachineAccelerators = ""
 
 const defaultKernelParams = ""
 const defaultMachineType = "pc"
-const defaultRootDirectory = "/var/run/kata-containers"
 const systemdUnitName = "kata-containers.target"
 
 const defaultVCPUCount uint32 = 1
@@ -35,7 +33,6 @@ const defaultMaxVCPUCount uint32 = 0
 const defaultMemSize uint32 = 2048 // MiB
 const defaultBridgesCount uint32 = 1
 const defaultInterNetworkingModel = "macvtap"
-const defaultDisableBlockDeviceUse bool = false
 const defaultBlockDeviceDriver = "virtio-scsi"
 const defaultEnableIOThreads bool = false
 const defaultEnableMemPrealloc bool = false

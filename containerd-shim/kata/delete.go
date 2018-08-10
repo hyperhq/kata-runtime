@@ -12,7 +12,7 @@ import (
 	"path"
 )
 
-func deleteContainer(s *service, c *Container) error {
+func deleteContainer(s *service, c *container) error {
 
 	status, err := s.sandbox.StatusContainer(c.id)
 	if err != nil {

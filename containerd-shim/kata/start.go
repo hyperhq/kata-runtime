@@ -13,7 +13,7 @@ import (
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 )
 
-func startContainer(ctx context.Context, s *service, c *Container) error {
+func startContainer(ctx context.Context, s *service, c *container) error {
 	//start a container
 	// Checks the MUST and MUST NOT from OCI runtime specification
 	status, sandboxID, err := getExistingContainerInfo(c.id)
@@ -44,6 +44,9 @@ func startContainer(ctx context.Context, s *service, c *Container) error {
 		return err
 	}
 	tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
+	if err != nil {
+		return err
+	}
 	c.ttyio = tty
 
 	go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
@@ -53,7 +56,7 @@ func startContainer(ctx context.Context, s *service, c *Container) error {
 	return nil
 }
 
-func startExec(ctx context.Context, s *service, containerID, execID string) (*Exec, error) {
+func startExec(ctx context.Context, s *service, containerID, execID string) (*exec, error) {
 	//start an exec
 	c, err := s.getContainer(containerID)
 	if err != nil {
@@ -88,6 +91,9 @@ func startExec(ctx context.Context, s *service, containerID, execID string) (*Ex
 		return nil, err
 	}
 	tty, err := newTtyIO(ctx, execs.tty.stdin, execs.tty.stdout, execs.tty.stderr, execs.tty.terminal)
+	if err != nil {
+		return nil, err
+	}
 	execs.ttyio = tty
 
 	go ioCopy(execs.exitIOch, tty, stdin, stdout, stderr)

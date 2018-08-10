@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
+
 package kata
 
 import (
@@ -12,13 +13,13 @@ import (
 	"syscall"
 )
 
-type TtyIO struct {
+type ttyIO struct {
 	Stdin  io.ReadCloser
 	Stdout io.Writer
 	Stderr io.Writer
 }
 
-func (tty *TtyIO) Close() {
+func (tty *ttyIO) close() {
 
 	if tty.Stdin != nil {
 		tty.Stdin.Close()
@@ -35,7 +36,7 @@ func (tty *TtyIO) Close() {
 	cf(tty.Stderr)
 }
 
-func newTtyIO(ctx context.Context, stdin, stdout, stderr string, console bool) (*TtyIO, error) {
+func newTtyIO(ctx context.Context, stdin, stdout, stderr string, console bool) (*ttyIO, error) {
 	var in io.ReadCloser
 	var outw io.Writer
 	var errw io.Writer
@@ -62,7 +63,7 @@ func newTtyIO(ctx context.Context, stdin, stdout, stderr string, console bool) (
 		}
 	}
 
-	ttyIO := &TtyIO{
+	ttyIO := &ttyIO{
 		Stdin:  in,
 		Stdout: outw,
 		Stderr: errw,
@@ -71,7 +72,7 @@ func newTtyIO(ctx context.Context, stdin, stdout, stderr string, console bool) (
 	return ttyIO, nil
 }
 
-func ioCopy(exitch chan struct{}, tty *TtyIO, stdinPipe io.WriteCloser, stdoutPipe, stderrPipe io.Reader) {
+func ioCopy(exitch chan struct{}, tty *ttyIO, stdinPipe io.WriteCloser, stdoutPipe, stderrPipe io.Reader) {
 	var wg sync.WaitGroup
 	var closeOnce sync.Once
 
@@ -93,7 +94,7 @@ func ioCopy(exitch chan struct{}, tty *TtyIO, stdinPipe io.WriteCloser, stdoutPi
 			defer bufPool.Put(p)
 			io.CopyBuffer(tty.Stdout, stdoutPipe, *p)
 			wg.Done()
-			closeOnce.Do(tty.Close)
+			closeOnce.Do(tty.close)
 		}()
 	}
 
@@ -108,6 +109,6 @@ func ioCopy(exitch chan struct{}, tty *TtyIO, stdinPipe io.WriteCloser, stdoutPi
 	}
 
 	wg.Wait()
-	closeOnce.Do(tty.Close)
+	closeOnce.Do(tty.close)
 	close(exitch)
 }

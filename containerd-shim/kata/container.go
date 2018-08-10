@@ -9,36 +9,31 @@ import (
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
-	vc "github.com/kata-containers/runtime/virtcontainers"
 	"sync"
 	"time"
 )
 
-type Container struct {
+type container struct {
 	s        *service
-	pid      uint32
+	ttyio    *ttyIO
+	time     time.Time
+	execs    map[string]*exec
+	exitIOch chan struct{}
+	exitch   chan uint32
 	id       string
 	stdin    string
 	stdout   string
 	stderr   string
-	ttyio    *TtyIO
+	bundle   string
+	mu       sync.Mutex
+	pid      uint32
+	exit     uint32
+	status   task.Status
 	terminal bool
-
-	exitIOch chan struct{}
-	exitch   chan uint32
-
-	bundle    string
-	execs     map[string]*Exec
-	container vc.VCContainer
-	status    task.Status
-	exit      uint32
-	time      time.Time
-
-	mu sync.Mutex
 }
 
-func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, container vc.VCContainer) *Container {
-	c := &Container{
+func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32) *container {
+	c := &container{
 		s:        s,
 		pid:      pid,
 		id:       r.ID,
@@ -47,7 +42,7 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, containe
 		stdout:   r.Stdout,
 		stderr:   r.Stderr,
 		terminal: r.Terminal,
-		execs:    make(map[string]*Exec),
+		execs:    make(map[string]*exec),
 		status:   task.StatusCreated,
 		exitIOch: make(chan struct{}),
 		exitch:   make(chan uint32, 1),
@@ -56,7 +51,7 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32, containe
 	return c
 }
 
-func (c *Container) getExec(id string) (*Exec, error) {
+func (c *container) getExec(id string) (*exec, error) {
 	exec := c.execs[id]
 
 	if exec == nil {

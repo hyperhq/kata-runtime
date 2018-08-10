@@ -12,6 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"context"
+	cdshim "github.com/containerd/containerd/runtime/v2/shim"
+	vc "github.com/kata-containers/runtime/virtcontainers"
+	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 )
 
 const (
@@ -64,11 +69,44 @@ func resolvePath(path string) (string, error) {
 }
 
 func cReap(s *service, pid, status int, id, execid string, exitat time.Time) {
-	s.ec <- Exit{
+	s.ec <- exit{
 		timestamp: exitat,
 		pid:       pid,
 		status:    status,
 		id:        id,
 		execid:    execid,
 	}
+}
+
+func getAddress(ctx context.Context, bundlePath, id string) (string, error) {
+	var err error
+
+	// Checks the MUST and MUST NOT from OCI runtime specification
+	if bundlePath, err = validCreateParams(id, bundlePath); err != nil {
+		return "", err
+	}
+
+	ociSpec, err := oci.ParseConfigJSON(bundlePath)
+	if err != nil {
+		return "", err
+	}
+
+	containerType, err := ociSpec.ContainerType()
+	if err != nil {
+		return "", err
+	}
+
+	if containerType == vc.PodContainer {
+		sandboxID, err := ociSpec.SandboxID()
+		if err != nil {
+			return "", err
+		}
+		address, err := cdshim.SocketAddress(ctx, sandboxID)
+		if err != nil {
+			return "", err
+		}
+		return address, nil
+	}
+
+	return "", nil
 }

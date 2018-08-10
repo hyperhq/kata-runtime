@@ -70,29 +70,7 @@ func create(s *service, containerID, bundlePath, netns string, detach bool,
 		}
 	}
 
-	if runtimeConfig.FactoryConfig.Template {
-		factoryConfig := vf.Config{
-			Template: true,
-			VMConfig: vc.VMConfig{
-				HypervisorType:   runtimeConfig.HypervisorType,
-				HypervisorConfig: runtimeConfig.HypervisorConfig,
-				AgentType:        runtimeConfig.AgentType,
-				AgentConfig:      runtimeConfig.AgentConfig,
-			},
-		}
-		logrus.WithField("factory", factoryConfig).Info("load vm factory")
-		f, err := vf.NewFactory(factoryConfig, true)
-		if err != nil {
-			logrus.WithError(err).Warn("load vm factory failed, about to create new one")
-			f, err = vf.NewFactory(factoryConfig, false)
-			if err != nil {
-				logrus.WithError(err).Warn("create vm factory failed")
-			}
-		}
-		if err != nil {
-			vci.SetFactory(f)
-		}
-	}
+	setFactory(runtimeConfig)
 
 	disableOutput := noNeedForOutput(detach, ociSpec.Process.Terminal)
 
@@ -121,6 +99,32 @@ func create(s *service, containerID, bundlePath, netns string, detach bool,
 	}
 
 	return c, nil
+}
+
+func setFactory(runtimeConfig *oci.RuntimeConfig) {
+	if runtimeConfig.FactoryConfig.Template {
+		factoryConfig := vf.Config{
+			Template: true,
+			VMConfig: vc.VMConfig{
+				HypervisorType:   runtimeConfig.HypervisorType,
+				HypervisorConfig: runtimeConfig.HypervisorConfig,
+				AgentType:        runtimeConfig.AgentType,
+				AgentConfig:      runtimeConfig.AgentConfig,
+			},
+		}
+		logrus.WithField("factory", factoryConfig).Info("load vm factory")
+		f, err := vf.NewFactory(factoryConfig, true)
+		if err != nil {
+			logrus.WithError(err).Warn("load vm factory failed, about to create new one")
+			f, err = vf.NewFactory(factoryConfig, false)
+			if err != nil {
+				logrus.WithError(err).Warn("create vm factory failed")
+			}
+		}
+		if err != nil {
+			vci.SetFactory(f)
+		}
+	}
 }
 
 var systemdKernelParam = []vc.Param{
