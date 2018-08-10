@@ -28,11 +28,11 @@ import (
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/containerd/typeurl"
 	ptypes "github.com/gogo/protobuf/types"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"path/filepath"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const bufferSize = 32
@@ -266,15 +266,24 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 		return nil, errdefs.ToGRPCf(errdefs.ErrInvalidArgument, "the container id is empty, please specify the container id")
 	}
 
+	var containers []vc.VCContainer
+
 	path, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	status, err := vci.StatusSandbox(s.id)
+	//get the bundle parent path, thus we can form a specific
+	//container's bundle path by "bundleParentPath/id"
+	bundleParentPath := filepath.Dir(path)
+
+	sandbox, err := vci.FetchSandbox(s.id)
 	if err != nil {
 		return nil, err
 	}
+
+	containers = sandbox.GetAllContainers()
+	status := sandbox.Status()
 
 	if oci.StateToOCIState(status.State) != oci.StateStopped {
 		if _, err := vci.StopSandbox(s.id); err != nil {
@@ -286,12 +295,15 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 		logrus.WithError(err).Warn("failed to remove kata container")
 	}
 
-	if err := delContainerIDMapping(s.id); err != nil {
-		logrus.WithError(err).Warn("failed to remove kata container id mapping files")
-	}
+	for _, c := range containers {
+		if err := delContainerIDMapping(s.id); err != nil {
+			logrus.WithError(err).Warnf("failed to remove kata container %s id mapping files", c.ID())
+		}
 
-	if err := mount.UnmountAll(filepath.Join(path, "rootfs"), 0); err != nil {
-		logrus.WithError(err).Warn("failed to cleanup rootfs mount")
+		rootfs := filepath.Join(bundleParentPath, c.ID(), "rootfs")
+		if err := mount.UnmountAll(rootfs, 0); err != nil {
+			logrus.WithError(err).Warnf("failed to cleanup container %s rootfs mount", c.ID())
+		}
 	}
 
 	return &taskAPI.DeleteResponse{

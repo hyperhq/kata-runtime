@@ -14,8 +14,8 @@ import (
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	vf "github.com/kata-containers/runtime/virtcontainers/factory"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
-	"github.com/sirupsen/logrus"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 )
 
 func create(s *service, containerID, bundlePath, netns string, detach bool,

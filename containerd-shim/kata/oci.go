@@ -172,7 +172,7 @@ func delContainerIDMapping(containerID string) error {
 	return os.RemoveAll(path)
 }
 
-func removeNameSpace(s *oci.CompatOCISpec, nsType specs.LinuxNamespaceType){
+func removeNameSpace(s *oci.CompatOCISpec, nsType specs.LinuxNamespaceType) {
 	for i, n := range s.Linux.Namespaces {
 		if n.Type == nsType {
 			s.Linux.Namespaces = append(s.Linux.Namespaces[:i], s.Linux.Namespaces[i+1:]...)
