@@ -12,6 +12,7 @@ import (
 	googleProtobuf "github.com/gogo/protobuf/types"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/containerd/containerd/errdefs"
 	"strings"
 	"time"
 )
@@ -65,6 +66,10 @@ func getEnvs(envs []string) []vc.EnvVar {
 func newExec(c *container, stdin, stdout, stderr string, terminal bool, jspec *googleProtobuf.Any) (*exec, error) {
 	var height uint32
 	var width uint32
+
+	if jspec == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrInvalidArgument, "googleProtobuf.Any points to nil")
+	}
 
 	// process exec request
 	var spec specs.Process

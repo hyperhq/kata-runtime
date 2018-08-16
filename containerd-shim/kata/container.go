@@ -32,7 +32,11 @@ type container struct {
 	terminal bool
 }
 
-func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32) *container {
+func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32) (*container, error) {
+	if r == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrInvalidArgument, " CreateTaskRequest points to nil")
+	}
+
 	c := &container{
 		s:        s,
 		pid:      pid,
@@ -48,10 +52,14 @@ func newContainer(s *service, r *taskAPI.CreateTaskRequest, pid uint32) *contain
 		exitch:   make(chan uint32, 1),
 		time:     time.Now(),
 	}
-	return c
+	return c, nil
 }
 
 func (c *container) getExec(id string) (*exec, error) {
+	if c.execs == nil {
+		return nil, errdefs.ToGRPCf(errdefs.ErrNotFound, "exec does not exist %s", id)
+	}
+
 	exec := c.execs[id]
 
 	if exec == nil {

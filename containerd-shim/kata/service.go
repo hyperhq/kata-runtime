@@ -392,7 +392,10 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 	}
 
 	pid := s.pid()
-	container := newContainer(s, r, pid)
+	container, err := newContainer(s, r, pid)
+	if err != nil {
+		return nil, err
+	}
 	container.status = task.StatusCreated
 
 	s.containers[r.ID] = container
