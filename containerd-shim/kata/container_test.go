@@ -6,9 +6,9 @@
 package kata
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNewContainer(t *testing.T) {
@@ -38,4 +38,3 @@ func TestGetExec(t *testing.T) {
 	_, err = c.getExec(TestID)
 	assert.NoError(err)
 }
-
