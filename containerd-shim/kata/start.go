@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/containerd/containerd/api/types/task"
-	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 )
 
@@ -26,7 +25,7 @@ func startContainer(ctx context.Context, s *service, c *container) error {
 		return err
 	}
 	if containerType.IsSandbox() {
-		_, err := vc.StartSandbox(s.sandbox.ID())
+		_, err := vci.StartSandbox(sandboxID)
 		if err != nil {
 			return err
 		}
@@ -43,13 +42,15 @@ func startContainer(ctx context.Context, s *service, c *container) error {
 	if err != nil {
 		return err
 	}
-	tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
-	if err != nil {
-		return err
-	}
-	c.ttyio = tty
 
-	go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
+	if c.stdin != "" || c.stdout != "" || c.stderr != "" {
+		tty, err := newTtyIO(ctx, c.stdin, c.stdout, c.stderr, c.terminal)
+		if err != nil {
+			return err
+		}
+		c.ttyio = tty
+		go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
+	}
 
 	go wait(s, c, "")
 
