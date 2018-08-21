@@ -9,10 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/containerd/containerd/api/types/task"
+	"github.com/containerd/containerd/errdefs"
 	googleProtobuf "github.com/gogo/protobuf/types"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/containerd/containerd/errdefs"
 	"strings"
 	"time"
 )

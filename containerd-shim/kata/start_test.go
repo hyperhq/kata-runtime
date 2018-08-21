@@ -11,12 +11,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/containerd/containerd/namespaces"
+	taskAPI "github.com/containerd/containerd/runtime/v2/task"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	vcAnnotations "github.com/kata-containers/runtime/virtcontainers/pkg/annotations"
-	taskAPI "github.com/containerd/containerd/runtime/v2/task"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/vcmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/containerd/containerd/namespaces"
 )
 
 func TestStartStartSandboxSuccess(t *testing.T) {
@@ -45,18 +45,18 @@ func TestStartStartSandboxSuccess(t *testing.T) {
 
 	s := &service{
 		id:         testSandboxID,
-		sandbox:	sandbox,
+		sandbox:    sandbox,
 		containers: make(map[string]*container),
 		processes:  make(map[uint32]string),
-	}	
+	}
 
 	s.containers[testSandboxID] = &container{
-		s:	s,
+		s:  s,
 		id: testSandboxID,
 	}
 
 	req := &taskAPI.StartRequest{
-		ID:			testSandboxID,
+		ID: testSandboxID,
 	}
 
 	testingImpl.StartSandboxFunc = func(sandboxID string) (vc.VCSandbox, error) {
@@ -97,18 +97,18 @@ func TestStartMissingAnnotation(t *testing.T) {
 
 	s := &service{
 		id:         testSandboxID,
-		sandbox:	sandbox,
+		sandbox:    sandbox,
 		containers: make(map[string]*container),
 		processes:  make(map[uint32]string),
-	}	
+	}
 
 	s.containers[testSandboxID] = &container{
-		s:	s,
+		s:  s,
 		id: testSandboxID,
 	}
 
 	req := &taskAPI.StartRequest{
-		ID:			testSandboxID,
+		ID: testSandboxID,
 	}
 
 	testingImpl.StartSandboxFunc = func(sandboxID string) (vc.VCSandbox, error) {
@@ -171,18 +171,18 @@ func TestStartStartContainerSucess(t *testing.T) {
 
 	s := &service{
 		id:         testSandboxID,
-		sandbox:	sandbox,
+		sandbox:    sandbox,
 		containers: make(map[string]*container),
 		processes:  make(map[uint32]string),
-	}	
+	}
 
 	s.containers[testContainerID] = &container{
-		s:	s,
+		s:  s,
 		id: testContainerID,
 	}
 
 	req := &taskAPI.StartRequest{
-		ID:			testContainerID,
+		ID: testContainerID,
 	}
 
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
