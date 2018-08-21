@@ -636,13 +636,11 @@ func (s *service) Kill(ctx context.Context, r *taskAPI.KillRequest) (*ptypes.Emp
 	}
 
 	err = s.sandbox.SignalProcess(c.id, processID, syscall.Signal(r.Signal), r.All)
-	if err == nil {
-		c.status, err = s.getContainerStatus(c.id)
-	} else {
-		c.status = task.StatusUnknown
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, err
+	return empty, err
 }
 
 // Pids returns all pids inside the container
