@@ -403,3 +403,18 @@ func createTempContainerIDMapping(containerID, sandboxID string) (string, error)
 
 	return tmpDir, nil
 }
+
+// Read fail that should contain a CompatOCISpec and
+// return its JSON representation on success
+func readOCIConfigJSON(configFile string) (string, error) {
+	bundlePath := filepath.Dir(configFile)
+	ociSpec, err := oci.ParseConfigJSON(bundlePath)
+	if err != nil {
+		return "", nil
+	}
+	ociSpecJSON, err := json.Marshal(ociSpec)
+	if err != nil {
+		return "", err
+	}
+	return string(ociSpecJSON), err
+}
