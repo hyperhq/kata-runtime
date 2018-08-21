@@ -50,6 +50,10 @@ func startContainer(ctx context.Context, s *service, c *container) error {
 		}
 		c.ttyio = tty
 		go ioCopy(c.exitIOch, tty, stdin, stdout, stderr)
+	} else {
+		//close the io exit channel, since there is no io for this container,
+		//otherwise the following wait goroutine will hang on this channel.
+		close(c.exitIOch)
 	}
 
 	go wait(s, c, "")
