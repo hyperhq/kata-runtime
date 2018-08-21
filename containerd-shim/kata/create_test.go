@@ -92,7 +92,6 @@ func TestCreateCreateSandboxSuccess(t *testing.T) {
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
 	_, err = s.Create(ctx, req)
 	assert.NoError(err)
-	os.RemoveAll(path)
 }
 
 func TestCreateCreateSandboxFail(t *testing.T) {
@@ -141,7 +140,6 @@ func TestCreateCreateSandboxFail(t *testing.T) {
 	_, err = s.Create(ctx, req)
 	assert.Error(err)
 	assert.True(vcmock.IsMockError(err))
-	os.RemoveAll(path)
 }
 
 func TestCreateCreateSandboxConfigFail(t *testing.T) {
@@ -199,7 +197,6 @@ func TestCreateCreateSandboxConfigFail(t *testing.T) {
 	_, err = s.Create(ctx, req)
 	assert.Error(err)
 	assert.True(vcmock.IsMockError(err))
-	os.RemoveAll(path)
 }
 
 func TestCreateCreateContainerSuccess(t *testing.T) {
@@ -266,7 +263,6 @@ func TestCreateCreateContainerSuccess(t *testing.T) {
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
 	_, err = s.Create(ctx, req)
 	assert.NoError(err)
-	os.RemoveAll(path)
 }
 
 func TestCreateCreateContainerFail(t *testing.T) {
@@ -320,7 +316,6 @@ func TestCreateCreateContainerFail(t *testing.T) {
 	_, err = s.Create(ctx, req)
 	assert.Error(err)
 	assert.False(vcmock.IsMockError(err))
-	os.RemoveAll(path)
 }
 
 func TestCreateCreateContainerConfigFail(t *testing.T) {
@@ -386,5 +381,4 @@ func TestCreateCreateContainerConfigFail(t *testing.T) {
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
 	_, err = s.Create(ctx, req)
 	assert.Error(err)
-	os.RemoveAll(path)
 }
