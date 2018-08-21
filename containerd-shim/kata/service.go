@@ -586,7 +586,7 @@ func (s *service) Pause(ctx context.Context, r *taskAPI.PauseRequest) (*ptypes.E
 
 	c.status = task.StatusPausing
 
-	err = vc.PauseContainer(r.ID, c.id)
+	err = vci.PauseContainer(r.ID, c.id)
 	if err == nil {
 		c.status = task.StatusPaused
 	} else {
@@ -606,7 +606,7 @@ func (s *service) Resume(ctx context.Context, r *taskAPI.ResumeRequest) (*ptypes
 		return nil, err
 	}
 
-	err = vc.ResumeContainer(r.ID, c.id)
+	err = vci.ResumeContainer(r.ID, c.id)
 	if err == nil {
 		c.status = task.StatusRunning
 	} else {
