@@ -50,12 +50,13 @@ func TestStartStartSandboxSuccess(t *testing.T) {
 		processes:  make(map[uint32]string),
 	}
 
-	s.containers[testSandboxID] = &container{
-		s:  s,
-		id: testSandboxID,
+	reqCreate := &taskAPI.CreateTaskRequest{
+		ID: testSandboxID,
 	}
+	s.containers[testSandboxID], err = newContainer(s, reqCreate, TestPid)
+	assert.NoError(err)
 
-	req := &taskAPI.StartRequest{
+	reqStart := &taskAPI.StartRequest{
 		ID: testSandboxID,
 	}
 
@@ -68,9 +69,8 @@ func TestStartStartSandboxSuccess(t *testing.T) {
 	}()
 
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
-	_, err = s.Start(ctx, req)
+	_, err = s.Start(ctx, reqStart)
 	assert.NoError(err)
-	os.RemoveAll(path)
 }
 
 func TestStartMissingAnnotation(t *testing.T) {
@@ -102,12 +102,13 @@ func TestStartMissingAnnotation(t *testing.T) {
 		processes:  make(map[uint32]string),
 	}
 
-	s.containers[testSandboxID] = &container{
-		s:  s,
-		id: testSandboxID,
+	reqCreate := &taskAPI.CreateTaskRequest{
+		ID: testSandboxID,
 	}
+	s.containers[testSandboxID], err = newContainer(s, reqCreate, TestPid)
+	assert.NoError(err)
 
-	req := &taskAPI.StartRequest{
+	reqStart := &taskAPI.StartRequest{
 		ID: testSandboxID,
 	}
 
@@ -120,9 +121,8 @@ func TestStartMissingAnnotation(t *testing.T) {
 	}()
 
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
-	_, err = s.Start(ctx, req)
+	_, err = s.Start(ctx, reqStart)
 	assert.Error(err)
-	os.RemoveAll(path)
 	assert.False(vcmock.IsMockError(err))
 }
 
@@ -134,10 +134,6 @@ func TestStartStartContainerSucess(t *testing.T) {
 	}
 
 	sandbox.MockContainers = []*vcmock.Container{
-		{
-			MockID:      testSandboxID,
-			MockSandbox: sandbox,
-		},
 		{
 			MockID:      testContainerID,
 			MockSandbox: sandbox,
@@ -176,17 +172,17 @@ func TestStartStartContainerSucess(t *testing.T) {
 		processes:  make(map[uint32]string),
 	}
 
-	s.containers[testContainerID] = &container{
-		s:  s,
-		id: testContainerID,
+	reqCreate := &taskAPI.CreateTaskRequest{
+		ID: testContainerID,
 	}
+	s.containers[testContainerID], err = newContainer(s, reqCreate, TestPid)
+	assert.NoError(err)
 
-	req := &taskAPI.StartRequest{
+	reqStart := &taskAPI.StartRequest{
 		ID: testContainerID,
 	}
 
 	ctx := namespaces.WithNamespace(context.Background(), "UnitTest")
-	_, err = s.Start(ctx, req)
+	_, err = s.Start(ctx, reqStart)
 	assert.NoError(err)
-	os.RemoveAll(path)
 }
