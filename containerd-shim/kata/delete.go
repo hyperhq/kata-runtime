@@ -14,7 +14,7 @@ import (
 
 func deleteContainer(s *service, c *container) error {
 
-	status, err := s.sandbox.StatusContainer(c.id)
+	status, err := vci.StatusContainer(s.sandbox.ID(), c.id)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func deleteContainer(s *service, c *container) error {
 		}
 	}
 
-	_, err = s.sandbox.DeleteContainer(c.id)
+	_, err = vci.DeleteContainer(s.sandbox.ID(), c.id)
 	if err != nil {
 		return err
 	}
