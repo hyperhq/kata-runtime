@@ -124,7 +124,7 @@ func (s *service) pid() uint32 {
 	return pidCount
 }
 
-func newCommand(ctx context.Context, containerdBinary, containerdAddress string) (*sysexec.Cmd, error) {
+func newCommand(ctx context.Context, containerdBinary, id, containerdAddress string) (*sysexec.Cmd, error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return nil, err
@@ -141,6 +141,7 @@ func newCommand(ctx context.Context, containerdBinary, containerdAddress string)
 		"-namespace", ns,
 		"-address", containerdAddress,
 		"-publish-binary", containerdBinary,
+		"-id", id,
 	}
 	cmd := sysexec.Command(self, args...)
 	cmd.Dir = cwd
@@ -166,7 +167,7 @@ func (s *service) StartShim(ctx context.Context, id, containerdBinary, container
 		return address, nil
 	}
 
-	cmd, err := newCommand(ctx, containerdBinary, containerdAddress)
+	cmd, err := newCommand(ctx, containerdBinary, id, containerdAddress)
 	if err != nil {
 		return "", err
 	}
