@@ -690,7 +690,7 @@ func (s *service) CloseIO(ctx context.Context, r *taskAPI.CloseIORequest) (*ptyp
 		tty = execs.ttyio
 	}
 
-	if tty != nil {
+	if tty != nil && tty.Stdin != nil {
 		if err := tty.Stdin.Close(); err != nil {
 			return nil, errors.Wrap(err, "close stdin")
 		}
