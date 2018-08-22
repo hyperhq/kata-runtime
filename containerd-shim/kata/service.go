@@ -260,11 +260,6 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 	//container's bundle path by "bundleParentPath/id"
 	bundleParentPath := filepath.Dir(path)
 
-	// Checks the MUST and MUST NOT from OCI runtime specification
-	if path, err = validCreateParams(s.id, path); err != nil {
-		return nil, err
-	}
-
 	ociSpec, err := oci.ParseConfigJSON(path)
 	if err != nil {
 		return nil, err
@@ -281,48 +276,12 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 		if err != nil {
 			return nil, err
 		}
-
-	case vc.PodContainer:
-		sandboxID, err := ociSpec.SandboxID()
-		if err != nil {
-			return nil, err
-		}
-
-		err = cleanupContainer(sandboxID, s.id, path)
-
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return &taskAPI.DeleteResponse{
 		ExitedAt:   time.Now(),
 		ExitStatus: 128 + uint32(unix.SIGKILL),
 	}, nil
-}
-
-func cleanupContainer(sid, cid, bundlePath string) error {
-	status, err := vci.StatusContainer(sid, cid)
-	if err != nil {
-		return err
-	}
-
-	if oci.StateToOCIState(status.State) != oci.StateStopped {
-		if _, err := vci.StopContainer(sid, cid); err != nil {
-			logrus.WithError(err).Warn("failed to stop kata container")
-		}
-	}
-
-	if err := delContainerIDMapping(cid); err != nil {
-		logrus.WithError(err).Warnf("failed to remove kata container %s id mapping files", cid)
-	}
-
-	rootfs := filepath.Join(bundlePath, "rootfs")
-	if err := mount.UnmountAll(rootfs, 0); err != nil {
-		logrus.WithError(err).Warnf("failed to cleanup container %s rootfs mount", cid)
-	}
-
-	return nil
 }
 
 func cleanupSandbox(id, bundleParentPath string) error {
