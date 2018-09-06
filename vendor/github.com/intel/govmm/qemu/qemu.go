@@ -754,6 +754,7 @@ type VhostUserDevice struct {
 	TypeDevID     string //variable QEMU parameter based on value of VhostUserType
 	Address       string //used for MAC address in net case
 	Tag           string //virtio-fs volume id for mounting inside guest
+	CacheSize     uint32 // virtio-fs DAX cache size in GiB
 	VhostUserType DeviceDriver
 
 	// ROMFile specifies the ROM file being used for this device.
@@ -828,6 +829,7 @@ func (vhostuserDev VhostUserDevice) QemuParams(config *Config) []string {
 		devParams = append(devParams, string(driver))
 		devParams = append(devParams, fmt.Sprintf("chardev=%s", vhostuserDev.CharDevID))
 		devParams = append(devParams, fmt.Sprintf("tag=%s", vhostuserDev.Tag))
+		devParams = append(devParams, fmt.Sprintf("cache-size=%dG", vhostuserDev.CacheSize))
 	default:
 		return nil
 	}

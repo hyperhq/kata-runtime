@@ -96,6 +96,9 @@ enable_virtio_fs = @DEFVIRTIOFS@
 # Path to vhost-user-fs daemon.
 virtio_fs_daemon = "@DEFVIRTIOFSDAEMON@"
 
+# Default size of DAX cache in GiB
+virtio_fs_cache_size = @DEFVIRTIOFSCACHESIZE@
+
 # Block storage driver to be used for the hypervisor in case the container
 # rootfs is backed by a block device. This is either virtio-scsi or 
 # virtio-blk.

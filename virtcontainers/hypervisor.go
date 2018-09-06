@@ -240,6 +240,9 @@ type HypervisorConfig struct {
 	// VirtioFSDaemon is the virtio-fs vhost-user daemon path
 	VirtioFSDaemon string
 
+	// VirtioFSCacheSize is the DAX cache size in GiB
+	VirtioFSCacheSize uint32
+
 	// EnableIOThreads enables IO to be processed in a separate thread.
 	// Supported currently for virtio-scsi driver.
 	EnableIOThreads bool

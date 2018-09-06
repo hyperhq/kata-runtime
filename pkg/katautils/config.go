@@ -103,6 +103,7 @@ type hypervisor struct {
 	DisableBlockDeviceUse   bool   `toml:"disable_block_device_use"`
 	VirtioFS                bool   `toml:"enable_virtio_fs"`
 	VirtioFSDaemon          string `toml:"virtio_fs_daemon"`
+	VirtioFSCacheSize       uint32 `toml:"virtio_fs_cache_size"`
 	MemPrealloc             bool   `toml:"enable_mem_prealloc"`
 	HugePages               bool   `toml:"enable_hugepages"`
 	Swap                    bool   `toml:"enable_swap"`
@@ -526,6 +527,7 @@ func newQemuHypervisorConfig(h hypervisor) (vc.HypervisorConfig, error) {
 		DisableBlockDeviceUse:   h.DisableBlockDeviceUse,
 		VirtioFS:                h.VirtioFS,
 		VirtioFSDaemon:          h.VirtioFSDaemon,
+		VirtioFSCacheSize:       h.VirtioFSCacheSize,
 		MemPrealloc:             h.MemPrealloc,
 		HugePages:               h.HugePages,
 		Mlock:                   !h.Swap,
