@@ -175,6 +175,7 @@ type VhostUserDeviceAttrs struct {
 	// These are only meaningful for vhost user fs devices
 	Tag string
         CacheSize uint32
+	Cache string
 }
 
 // GetHostPathFunc is function pointer used to mock GetHostPath in tests.

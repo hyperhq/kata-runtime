@@ -104,6 +104,7 @@ type hypervisor struct {
 	VirtioFS                bool   `toml:"enable_virtio_fs"`
 	VirtioFSDaemon          string `toml:"virtio_fs_daemon"`
 	VirtioFSCacheSize       uint32 `toml:"virtio_fs_cache_size"`
+	VirtioFSCache           string `toml:"virtio_fs_cache"`
 	MemPrealloc             bool   `toml:"enable_mem_prealloc"`
 	HugePages               bool   `toml:"enable_hugepages"`
 	Swap                    bool   `toml:"enable_swap"`
@@ -528,6 +529,7 @@ func newQemuHypervisorConfig(h hypervisor) (vc.HypervisorConfig, error) {
 		VirtioFS:                h.VirtioFS,
 		VirtioFSDaemon:          h.VirtioFSDaemon,
 		VirtioFSCacheSize:       h.VirtioFSCacheSize,
+		VirtioFSCache:           h.VirtioFSCache,
 		MemPrealloc:             h.MemPrealloc,
 		HugePages:               h.HugePages,
 		Mlock:                   !h.Swap,

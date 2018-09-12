@@ -755,6 +755,7 @@ type VhostUserDevice struct {
 	Address       string //used for MAC address in net case
 	Tag           string //virtio-fs volume id for mounting inside guest
 	CacheSize     uint32 // virtio-fs DAX cache size in GiB
+	Cache         string //virtio-fs cache mode
 	VhostUserType DeviceDriver
 
 	// ROMFile specifies the ROM file being used for this device.

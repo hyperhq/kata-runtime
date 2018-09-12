@@ -551,6 +551,7 @@ func (q *qemu) startSandbox() error {
 	}()
 
 	if q.config.VirtioFS {
+		var cmd *exec.Cmd
 		sockPath, err := utils.BuildSocketPath(runStoragePath, q.id, "vhost-fs.sock")
 		if err != nil {
 			return err
@@ -560,8 +561,12 @@ func (q *qemu) startSandbox() error {
 		// connection with QEMU closes.  Therefore we do not keep track
 		// of this child process.
 		sourcePath := filepath.Join(kataHostSharedDir, q.id)
+		cmd = exec.Command(q.config.VirtioFSDaemon,
+			"-o", "virtio_socket="+sockPath,
+			"-o", "source="+sourcePath,
+			"-o", "cache="+q.config.VirtioFSCache,
+			"/")
 
-		cmd := exec.Command(q.config.VirtioFSDaemon, "-o", "virtio_socket="+sockPath, "-o", "source="+sourcePath, "/")
 		if err := cmd.Start(); err != nil {
 			return err
 		}
@@ -1198,9 +1203,10 @@ func (q *qemu) addDevice(devInfo interface{}, devType deviceType) error {
 			}
 
 			vhostDev := config.VhostUserDeviceAttrs{
-				Tag:  v.MountTag,
-				Type: config.VhostUserFS,
+				Tag:       v.MountTag,
+				Type:      config.VhostUserFS,
 				CacheSize: q.config.VirtioFSCacheSize,
+				Cache:     q.config.VirtioFSCache,
 			}
 			vhostDev.SocketPath = sockPath
 			vhostDev.DevID = id

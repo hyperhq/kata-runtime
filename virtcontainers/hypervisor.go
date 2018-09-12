@@ -243,6 +243,9 @@ type HypervisorConfig struct {
 	// VirtioFSCacheSize is the DAX cache size in GiB
 	VirtioFSCacheSize uint32
 
+	// VirtioFSCache cache mode for fs version cache or "none"
+	VirtioFSCache string
+
 	// EnableIOThreads enables IO to be processed in a separate thread.
 	// Supported currently for virtio-scsi driver.
 	EnableIOThreads bool
