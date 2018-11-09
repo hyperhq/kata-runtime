@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package kata
+package containerdshim
 
 import (
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"

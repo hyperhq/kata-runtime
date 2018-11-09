@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package kata
+package containerdshim
 
 import (
 	"context"
@@ -27,6 +27,7 @@ import (
 	taskAPI "github.com/containerd/containerd/runtime/v2/task"
 	"github.com/containerd/typeurl"
 
+	"github.com/kata-containers/runtime/pkg/katautils"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 
@@ -56,8 +57,10 @@ var vci vc.VC = &vc.VCImpl{}
 
 // New returns a new shim service that can be used via GRPC
 func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shim, error) {
-	runtimeConfig, err := loadConfiguration()
-
+	logger := logrus.WithField("ID", id)
+	vci.SetLogger(ctx, logger)
+	katautils.SetLogger(ctx, logger, logger.Logger.Level)
+	_, runtimeConfig, err := katautils.LoadConfiguration("", true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +68,7 @@ func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shi
 	s := &service{
 		id:         id,
 		context:    ctx,
-		config:     runtimeConfig,
+		config:     &runtimeConfig,
 		containers: make(map[string]*container),
 		processes:  make(map[uint32]string),
 		events:     make(chan interface{}, 128),
@@ -75,12 +78,6 @@ func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shi
 	go s.processExits()
 
 	go s.forward(publisher)
-
-	logger := logrus.WithField("ID", id)
-	if runtimeConfig.Debug {
-		logger.Logger.Level = logrus.DebugLevel
-	}
-	vci.SetLogger(ctx, logger)
 
 	return s, nil
 }

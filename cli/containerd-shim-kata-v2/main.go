@@ -7,9 +7,9 @@ package main
 
 import (
 	"github.com/containerd/containerd/runtime/v2/shim"
-	"github.com/kata-containers/runtime/containerd-shim/kata"
+	"github.com/kata-containers/runtime/containerd-shim"
 )
 
 func main() {
-	shim.Run("io.containerd.kata.v2", kata.New)
+	shim.Run("io.containerd.kata.v2", containerdshim.New)
 }
