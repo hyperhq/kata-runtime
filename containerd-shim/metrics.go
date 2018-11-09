@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package kata
+package containerd_shim
 
 import (
 	"github.com/containerd/cgroups"

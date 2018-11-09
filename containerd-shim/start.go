@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package kata
+package containerd_shim
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/containerd/containerd/api/types/task"
+	"github.com/kata-containers/runtime/pkg/katautils"
 )
 
 func startContainer(ctx context.Context, s *service, c *container) error {
@@ -37,8 +38,8 @@ func startContainer(ctx context.Context, s *service, c *container) error {
 	}
 
 	// Run post-start OCI hooks.
-	err := enterNetNS(s.sandbox.GetNetNs(), func() error {
-		return postStartHooks(ctx, *c.spec, s.sandbox.ID(), c.bundle)
+	err := katautils.EnterNetNS(s.sandbox.GetNetNs(), func() error {
+		return katautils.PostStartHooks(ctx, *c.spec, s.sandbox.ID(), c.bundle)
 	})
 	if err != nil {
 		return err

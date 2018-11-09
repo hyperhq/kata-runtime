@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package kata
+package containerd_shim
 
 import (
 	"context"
 	"path"
 
 	"github.com/containerd/containerd/mount"
+	"github.com/kata-containers/runtime/pkg/katautils"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/sirupsen/logrus"
 )
@@ -33,7 +34,7 @@ func deleteContainer(ctx context.Context, s *service, c *container) error {
 	}
 
 	// Run post-stop OCI hooks.
-	if err := postStopHooks(ctx, *c.spec, s.sandbox.ID(), c.bundle); err != nil {
+	if err := katautils.PostStopHooks(ctx, *c.spec, s.sandbox.ID(), c.bundle); err != nil {
 		return err
 	}
 

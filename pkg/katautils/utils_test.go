@@ -23,6 +23,16 @@ const (
 	testFileMode = os.FileMode(0640)
 
 	testDisabledNeedNonRoot = "Test disabled as requires non-root user"
+
+	testDisabledNeedRoot = "Test disabled as requires root user"
+	testExeFileMode      = os.FileMode(0750)
+
+	// small docker image used to create root filesystems from
+	testDockerImage = "busybox"
+
+	testSandboxID   = "99999999-9999-9999-99999999999999999"
+	testContainerID = "1"
+	testBundle      = "bundle"
 )
 
 var testDir = ""

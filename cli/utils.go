@@ -36,26 +36,6 @@ func fileExists(path string) bool {
 	return true
 }
 
-// IsEphemeralStorage returns true if the given path
-// to the storage belongs to kubernetes ephemeral storage
-//
-// This method depends on a specific path used by k8s
-// to detect if it's of type ephemeral. As of now,
-// this is a very k8s specific solution that works
-// but in future there should be a better way for this
-// method to determine if the path is for ephemeral
-// volume type
-func IsEphemeralStorage(path string) bool {
-	splitSourceSlice := strings.Split(path, "/")
-	if len(splitSourceSlice) > 1 {
-		storageType := splitSourceSlice[len(splitSourceSlice)-2]
-		if storageType == k8sEmptyDir {
-			return true
-		}
-	}
-	return false
-}
-
 func getKernelVersion() (string, error) {
 	contents, err := katautils.GetFileContents(procVersion)
 	if err != nil {
