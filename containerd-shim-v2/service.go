@@ -316,7 +316,39 @@ func (s *service) Start(ctx context.Context, r *taskAPI.StartRequest) (*taskAPI.
 
 // Delete the initial process and container
 func (s *service) Delete(ctx context.Context, r *taskAPI.DeleteRequest) (*taskAPI.DeleteResponse, error) {
-	return nil, errdefs.ErrNotImplemented
+	s.Lock()
+	defer s.Unlock()
+
+	c, err := s.getContainer(r.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.ExecID == "" {
+		err = deleteContainer(ctx, s, c)
+		if err != nil {
+			return nil, err
+		}
+
+		return &taskAPI.DeleteResponse{
+			ExitStatus: c.exit,
+			ExitedAt:   c.time,
+			Pid:        s.pid,
+		}, nil
+	}
+	//deal with the exec case
+	execs, err := c.getExec(r.ExecID)
+	if err != nil {
+		return nil, err
+	}
+
+	delete(c.execs, r.ExecID)
+
+	return &taskAPI.DeleteResponse{
+		ExitStatus: uint32(execs.exitCode),
+		ExitedAt:   execs.exitTime,
+		Pid:        s.pid,
+	}, nil
 }
 
 // Exec an additional process inside the container
@@ -362,7 +394,7 @@ func (s *service) State(ctx context.Context, r *taskAPI.StateRequest) (*taskAPI.
 		return &taskAPI.StateResponse{
 			ID:         c.id,
 			Bundle:     c.bundle,
-			Pid:        PID,
+			Pid:        s.pid,
 			Status:     c.status,
 			Stdin:      c.stdin,
 			Stdout:     c.stdout,
@@ -381,7 +413,7 @@ func (s *service) State(ctx context.Context, r *taskAPI.StateRequest) (*taskAPI.
 	return &taskAPI.StateResponse{
 		ID:         execs.id,
 		Bundle:     c.bundle,
-		Pid:        PID,
+		Pid:        s.pid,
 		Status:     execs.status,
 		Stdin:      execs.tty.stdin,
 		Stdout:     execs.tty.stdout,
