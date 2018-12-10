@@ -557,16 +557,21 @@ func (q *qemu) startSandbox() error {
 			return err
 		}
 
+		sourcePath := filepath.Join(kataHostSharedDir, q.id)
+
+		var args []string
+		args = append(args, "-o", "virtio_socket="+sockPath,
+			"-o", "source="+sourcePath,
+			"-o", "cache="+q.config.VirtioFSCache)
+		if q.config.VirtioFSSharedVersions {
+			args = append(args, "-o", "shared")
+		}
+		args = append(args, "/")
+
 		// The daemon will terminate when the vhost-user socket
 		// connection with QEMU closes.  Therefore we do not keep track
 		// of this child process.
-		sourcePath := filepath.Join(kataHostSharedDir, q.id)
-		cmd = exec.Command(q.config.VirtioFSDaemon,
-			"-o", "virtio_socket="+sockPath,
-			"-o", "source="+sourcePath,
-			"-o", "cache="+q.config.VirtioFSCache,
-			"/")
-
+		cmd = exec.Command(q.config.VirtioFSDaemon, args...)
 		if err := cmd.Start(); err != nil {
 			return err
 		}
@@ -1203,10 +1208,11 @@ func (q *qemu) addDevice(devInfo interface{}, devType deviceType) error {
 			}
 
 			vhostDev := config.VhostUserDeviceAttrs{
-				Tag:       v.MountTag,
-				Type:      config.VhostUserFS,
-				CacheSize: q.config.VirtioFSCacheSize,
-				Cache:     q.config.VirtioFSCache,
+				Tag:            v.MountTag,
+				Type:           config.VhostUserFS,
+				CacheSize:      q.config.VirtioFSCacheSize,
+				Cache:          q.config.VirtioFSCache,
+				SharedVersions: q.config.VirtioFSSharedVersions,
 			}
 			vhostDev.SocketPath = sockPath
 			vhostDev.DevID = id

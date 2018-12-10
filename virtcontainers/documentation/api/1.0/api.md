@@ -152,6 +152,9 @@ type HypervisorConfig struct {
 	// VirtioFSCache cache mode for fs version cache or "none"
 	VirtioFSCache string
 
+	// VirtioFSSharedVersions enables shared version metadata daemon
+	VirtioFSSharedVersions bool
+
 	// KernelParams are additional guest kernel parameters.
 	KernelParams []Param
 

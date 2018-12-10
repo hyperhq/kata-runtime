@@ -114,6 +114,9 @@ virtio_fs_cache_size = @DEFVIRTIOFSCACHESIZE@
 #    Metadata, data, and pathname lookup are cached in guest and never expire.
 virtio_fs_cache = "@DEFVIRTIOFSCACHE@"
 
+# Use shared version metadata
+virtio_fs_shared_versions = @DEFVIRTIOFSSHAREDVERSIONS@
+
 # Block storage driver to be used for the hypervisor in case the container
 # rootfs is backed by a block device. This is either virtio-scsi or 
 # virtio-blk.

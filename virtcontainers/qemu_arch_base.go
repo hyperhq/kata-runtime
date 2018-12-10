@@ -527,6 +527,7 @@ func (q *qemuArchBase) appendVhostUserDevice(devices []govmmQemu.Device, attr co
 		qemuVhostUserDevice.Tag = attr.Tag
 		qemuVhostUserDevice.CacheSize = attr.CacheSize
 		qemuVhostUserDevice.Cache = attr.Cache
+		qemuVhostUserDevice.SharedVersions = attr.SharedVersions
 	}
 
 	qemuVhostUserDevice.VhostUserType = govmmQemu.DeviceDriver(attr.Type)

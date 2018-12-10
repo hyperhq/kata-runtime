@@ -246,6 +246,9 @@ type HypervisorConfig struct {
 	// VirtioFSCache cache mode for fs version cache or "none"
 	VirtioFSCache string
 
+	// VirtioFSSharedVersions enables shared version metadata daemon
+	VirtioFSSharedVersions bool
+
 	// EnableIOThreads enables IO to be processed in a separate thread.
 	// Supported currently for virtio-scsi driver.
 	EnableIOThreads bool
