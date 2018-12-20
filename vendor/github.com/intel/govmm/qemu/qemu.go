@@ -749,15 +749,16 @@ func (blkdev BlockDevice) QemuParams(config *Config) []string {
 // VhostUserDevice represents a qemu vhost-user device meant to be passed
 // in to the guest
 type VhostUserDevice struct {
-	SocketPath    string //path to vhostuser socket on host
-	CharDevID     string
-	TypeDevID     string //variable QEMU parameter based on value of VhostUserType
-	Address       string //used for MAC address in net case
-	Tag           string //virtio-fs volume id for mounting inside guest
-	CacheSize     uint32 // virtio-fs DAX cache size in GiB
-	Cache         string //virtio-fs cache mode
-	SharedVersions bool  //enable virtio-fs shared version metadata
-	VhostUserType DeviceDriver
+	SocketPath     string //path to vhostuser socket on host
+	CharDevID      string
+	TypeDevID      string //variable QEMU parameter based on value of VhostUserType
+	Address        string //used for MAC address in net case
+	Tag            string //virtio-fs volume id for mounting inside guest
+	CacheSize      uint32 // virtio-fs DAX cache size in GiB
+	Cache          string //virtio-fs cache mode
+	SharedVersions bool   //enable virtio-fs shared version metadata
+	DisableModern  bool   // DisableModern prevents qemu from relying on fast MMIO.
+	VhostUserType  DeviceDriver
 
 	// ROMFile specifies the ROM file being used for this device.
 	ROMFile string
@@ -841,6 +842,9 @@ func (vhostuserDev VhostUserDevice) QemuParams(config *Config) []string {
 
 	if isVirtioPCI[driver] {
 		devParams = append(devParams, fmt.Sprintf("romfile=%s", vhostuserDev.ROMFile))
+		if vhostuserDev.DisableModern {
+			devParams = append(devParams, "disable-modern=true")
+		}
 	}
 
 	qemuParams = append(qemuParams, "-chardev")

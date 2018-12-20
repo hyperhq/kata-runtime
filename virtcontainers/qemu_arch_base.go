@@ -533,6 +533,7 @@ func (q *qemuArchBase) appendVhostUserDevice(devices []govmmQemu.Device, attr co
 	qemuVhostUserDevice.VhostUserType = govmmQemu.DeviceDriver(attr.Type)
 	qemuVhostUserDevice.SocketPath = attr.SocketPath
 	qemuVhostUserDevice.CharDevID = utils.MakeNameID("char", attr.DevID, maxDevIDSize)
+	qemuVhostUserDevice.DisableModern = q.nestedRun
 
 	devices = append(devices, qemuVhostUserDevice)
 
