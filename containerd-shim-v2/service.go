@@ -16,9 +16,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/containerd/runtime/v2/kata/options"
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/typeurl"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	cdruntime "github.com/containerd/containerd/runtime"
@@ -63,16 +65,11 @@ func New(ctx context.Context, id string, publisher events.Publisher) (cdshim.Shi
 	logrus.SetOutput(ioutil.Discard)
 	vci.SetLogger(ctx, logger)
 	katautils.SetLogger(ctx, logger, logger.Logger.Level)
-	_, runtimeConfig, err := katautils.LoadConfiguration("", false, true)
-	if err != nil {
-		return nil, err
-	}
 
 	s := &service{
 		id:         id,
 		pid:        uint32(os.Getpid()),
 		context:    ctx,
-		config:     &runtimeConfig,
 		containers: make(map[string]*container),
 		events:     make(chan interface{}, chSize),
 		ec:         make(chan exit, bufferSize),
@@ -105,7 +102,6 @@ type service struct {
 	context    context.Context
 	sandbox    vc.VCSandbox
 	containers map[string]*container
-	config     *oci.RuntimeConfig
 	events     chan interface{}
 
 	ec chan exit
@@ -297,11 +293,22 @@ func (s *service) Cleanup(ctx context.Context) (*taskAPI.DeleteResponse, error) 
 func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *taskAPI.CreateTaskResponse, err error) {
 	s.Lock()
 	defer s.Unlock()
+	var confFile string
 
 	//the network namespace created by cni plugin
 	netns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "create namespace")
+	}
+
+	var opts options.Options
+	if r.Options != nil {
+		v, err := typeurl.UnmarshalAny(r.Options)
+		if err != nil {
+			return nil, err
+		}
+		opts = *v.(*options.Options)
+		confFile = opts.ConfFile
 	}
 
 	rootfs := filepath.Join(r.Bundle, "rootfs")
@@ -323,7 +330,7 @@ func (s *service) Create(ctx context.Context, r *taskAPI.CreateTaskRequest) (_ *
 		}
 	}
 
-	container, err := create(ctx, s, r, netns, s.config)
+	container, err := create(ctx, s, r, netns, confFile)
 	if err != nil {
 		return nil, err
 	}

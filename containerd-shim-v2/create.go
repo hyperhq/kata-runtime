@@ -10,6 +10,7 @@ package containerdshim
 import (
 	"context"
 	"fmt"
+	"os"
 
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
@@ -20,8 +21,8 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func create(ctx context.Context, s *service, r *taskAPI.CreateTaskRequest, netns string,
-	runtimeConfig *oci.RuntimeConfig) (*container, error) {
+func create(ctx context.Context, s *service, r *taskAPI.CreateTaskRequest, netns, confFile string,
+	) (*container, error) {
 
 	detach := !r.Terminal
 
@@ -66,8 +67,6 @@ func create(ctx context.Context, s *service, r *taskAPI.CreateTaskRequest, netns
 		}
 	}
 
-	katautils.HandleFactory(ctx, vci, runtimeConfig)
-
 	disableOutput := noNeedForOutput(detach, ociSpec.Process.Terminal)
 
 	switch containerType {
@@ -76,7 +75,18 @@ func create(ctx context.Context, s *service, r *taskAPI.CreateTaskRequest, netns
 			return nil, fmt.Errorf("cannot create another sandbox in sandbox: %s", s.sandbox.ID())
 		}
 
-		sandbox, _, err := katautils.CreateSandbox(ctx, vci, ociSpec, *runtimeConfig, r.ID, bundlePath, "", disableOutput, false, true)
+		// Try to get the config file from the env KATA_CONF_FILE if 
+		// containerd doesn't pass the confFile 
+		if confFile == "" {
+			confFile = os.Getenv("KATA_CONF_FILE")
+		}
+		_, runtimeConfig, err := katautils.LoadConfiguration(confFile, false, true)
+		if err != nil {
+                	return nil, err
+        	}
+
+		katautils.HandleFactory(ctx, vci, &runtimeConfig)
+		sandbox, _, err := katautils.CreateSandbox(ctx, vci, ociSpec, runtimeConfig, r.ID, bundlePath, "", disableOutput, false, true)
 		if err != nil {
 			return nil, err
 		}
